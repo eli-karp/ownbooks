@@ -1,0 +1,1551 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f6f50">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>OwnBooks</title>
+
+<style>:root{
+  --bg:#f5f6f4;--panel:#ffffff;--ink:#1d2321;--muted:#66706c;--line:#dde2df;--soft:#eef1ef;
+  --brand:#1f6f50;--brand-ink:#ffffff;--brand-soft:#e3f1ea;--danger:#b3261e;--warn:#9a6700;--ok:#1f6f50;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121614;--panel:#1a201d;--ink:#e6ebe8;--muted:#9aa5a0;--line:#2c3430;--soft:#222a26;
+  --brand:#4fbf8b;--brand-ink:#08130e;--brand-soft:#1d3329;--danger:#f2867e;--warn:#e0b04a;--ok:#4fbf8b;
+  --shadow:none;}}
+:root[data-theme="dark"]{
+  --bg:#121614;--panel:#1a201d;--ink:#e6ebe8;--muted:#9aa5a0;--line:#2c3430;--soft:#222a26;
+  --brand:#4fbf8b;--brand-ink:#08130e;--brand-soft:#1d3329;--danger:#f2867e;--warn:#e0b04a;--ok:#4fbf8b;--shadow:none;}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--brand)}
+.app{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+nav.side{background:var(--panel);border-right:1px solid var(--line);padding:14px 10px;position:sticky;top:0;height:100vh;overflow:auto}
+.logo{font-weight:700;font-size:18px;padding:4px 10px 14px;color:var(--brand)}
+.logo small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+nav.side a{display:block;padding:8px 10px;border-radius:8px;color:var(--ink);text-decoration:none;margin:1px 0}
+nav.side a:hover{background:var(--soft)}
+nav.side a.on{background:var(--brand-soft);color:var(--brand);font-weight:600}
+main{padding:18px 22px 60px;min-width:0}
+.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.top h1{font-size:20px;margin:0;flex:1}
+.status{font-size:12px;color:var(--muted)}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
+button:hover{background:var(--soft)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary,.btn.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+button.danger{color:var(--danger)}
+button.icon{padding:4px 9px}
+button.sm{padding:4px 8px;font-size:12px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 8px;width:100%;min-width:0}
+textarea{min-height:56px}
+input.num{text-align:right}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:16px}
+.kpi .v{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums}
+.kpi .l{color:var(--muted);font-size:12px}
+.tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600;background:var(--soft);white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--soft)}
+tr.sec td{font-weight:650;background:var(--soft)}
+tr.tot td{font-weight:650;border-top:2px solid var(--ink)}
+tr.grand td{font-weight:750;border-top:2px solid var(--ink);border-bottom:3px double var(--ink)}
+td.ind{padding-left:26px}
+.muted{color:var(--muted)}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:var(--soft);color:var(--muted)}
+.pill.open{background:#fff3cd;color:#7a5600}.pill.void{background:#f8d7da;color:#842029}.pill.paid{background:var(--brand-soft);color:var(--brand)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pill.open{background:#3b3115;color:#e0b04a}:root:not([data-theme="light"]) .pill.void{background:#3d1d1d;color:#f2867e}}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:end}
+.filters>div{min-width:130px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button.on{background:var(--brand-soft);color:var(--brand);border-color:var(--brand)}
+dialog{border:none;border-radius:14px;padding:0;width:min(980px,calc(100vw - 16px));max-height:94vh;background:var(--panel);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.mhead{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+.mhead h2{margin:0;font-size:17px;flex:1}
+.mbody{padding:16px}
+.mfoot{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--panel)}
+.mfoot .sp{flex:1}
+.err{color:var(--danger);font-weight:600;margin:8px 0}
+.lines td{padding:4px;border-bottom:none}
+.lines th{padding:6px 4px}
+.totals{display:grid;grid-template-columns:auto 140px;gap:4px 14px;justify-content:end;margin-top:10px;font-variant-numeric:tabular-nums}
+.totals .t{font-weight:700;font-size:16px}
+.section{margin:16px 0 8px;font-weight:650}
+.receipts{display:flex;gap:10px;flex-wrap:wrap}
+.receipt{position:relative;width:110px}
+.receipt img,.receipt .doc{width:110px;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--soft);cursor:pointer}
+.receipt button{position:absolute;top:4px;right:4px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.right{text-align:right}
+.hint{font-size:12px;color:var(--muted)}
+details.menu{position:relative}
+details.menu summary{list-style:none}
+details.menu summary::-webkit-details-marker{display:none}
+details.menu .items{position:absolute;right:0;top:110%;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:6px;z-index:20;min-width:210px}
+details.menu .items a{display:block;padding:7px 10px;border-radius:6px;color:var(--ink);text-decoration:none;cursor:pointer}
+details.menu .items a:hover{background:var(--soft)}
+details.menu .items hr{border:none;border-top:1px solid var(--line);margin:4px}
+.report h2{margin:0;font-size:16px}.report h3{margin:2px 0;font-size:15px}
+.diff{font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;background:var(--soft);padding:8px;border-radius:8px;margin-top:6px}
+.fab{display:none}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  nav.side{position:sticky;top:0;height:auto;display:flex;overflow-x:auto;gap:2px;padding:6px;border-right:none;border-bottom:1px solid var(--line);z-index:10}
+  nav.side .logo{display:none}
+  nav.side a{white-space:nowrap;padding:7px 10px}
+  main{padding:14px 16px 90px}
+  .fab{display:block;position:fixed;right:16px;bottom:18px;z-index:30;border-radius:99px;padding:14px 18px;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+  .totals{grid-template-columns:auto 110px}
+  .hide-sm{display:none}
+  table.lines thead{display:none}
+  table.lines tr.line{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
+  table.lines tr.line td{display:block;padding:0;min-width:0!important}
+  table.lines tr.line td:first-child,table.lines tr.line td:nth-child(2){grid-column:1/-1}
+  table.lines input,table.lines select{min-width:0!important}
+}
+@media print{nav.side,.top button,.filters,.fab,.noprint{display:none!important}.app{display:block}.tablewrap{border:none}}
+</style>
+</head><body>
+<div class="app"><nav class="side" id="nav"></nav><main id="main"><p style="padding:20px">Loading your books…</p></main></div>
+<dialog id="modal"></dialog>
+<noscript>OwnBooks needs JavaScript enabled.</noscript>
+<script>'use strict';
+/* ============================================================
+   OwnBooks — local-first bookkeeping. All data stays on this device
+   (IndexedDB in this browser) unless YOU export it.
+   ============================================================ */
+
+/* ---------- utilities ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const r2 = n => Math.round(((+n) || 0) * 100 + Number.EPSILON * 100) / 100;
+const clone = o => o == null ? o : JSON.parse(JSON.stringify(o));
+const nowISO = () => new Date().toISOString();
+const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+function addDays(ds, n) { const d = new Date(ds + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function daysBetween(a, b) { return Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5); }
+let _fmt;
+function fmt(n) { if (!_fmt) { try { _fmt = new Intl.NumberFormat(undefined, { style: 'currency', currency: db.meta.currency || 'CAD' }); } catch (e) { _fmt = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } } return _fmt.format(r2(n)); }
+function fmtDate(d) { return d || ''; }
+function toast(msg) { const s = $('#status'); if (s) { s.textContent = msg; clearTimeout(toast.t); toast.t = setTimeout(() => s.textContent = storageNote(), 3500); } }
+function download(name, data, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+function toCSV(rows) { return rows.map(r => r.map(v => { v = v == null ? '' : String(v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(',')).join('\r\n'); }
+
+/* ---------- constants ---------- */
+const TYPES = ['Asset', 'Liability', 'Equity', 'Income', 'Cost of Goods Sold', 'Expense', 'Other Income', 'Other Expense'];
+const SUBTYPES = {
+  Asset: ['Bank', 'Accounts Receivable', 'Other Current Asset', 'Fixed Asset', 'Other Asset'],
+  Liability: ['Accounts Payable', 'Credit Card', 'Other Current Liability', 'Long Term Liability'],
+  Equity: ['Equity'], Income: ['Income'], 'Cost of Goods Sold': ['Cost of Goods Sold'], Expense: ['Expense'],
+  'Other Income': ['Other Income'], 'Other Expense': ['Other Expense']
+};
+const DEBIT_NORMAL = new Set(['Asset', 'Cost of Goods Sold', 'Expense', 'Other Expense']);
+const PL_TYPES = new Set(['Income', 'Cost of Goods Sold', 'Expense', 'Other Income', 'Other Expense']);
+const TT = {
+  invoice: { label: 'Invoice', party: 'customer', lines: 'item', tax: 'sale', due: true, receipts: true },
+  payment: { label: 'Payment Received', party: 'customer', link: 'invoice', bank: 'Deposit to', amount: true, receipts: true },
+  deposit: { label: 'Income / Deposit', party: 'customer', partyOptional: true, lines: 'amount', tax: 'sale', bank: 'Deposit to', receipts: true },
+  bill: { label: 'Bill', party: 'vendor', lines: 'amount', tax: 'purchase', due: true, receipts: true },
+  billpay: { label: 'Bill Payment', party: 'vendor', link: 'bill', bank: 'Paid from', amount: true, receipts: true },
+  expense: { label: 'Expense', party: 'vendor', partyOptional: true, lines: 'amount', tax: 'purchase', bank: 'Paid from', receipts: true },
+  transfer: { label: 'Transfer', bank: 'Transfer from', to: true, amount: true },
+  journal: { label: 'Journal Entry', lines: 'journal', receipts: true }
+};
+/* Canada T2125 (self-employment) lines – used to build the income tax summary. Editable per account. */
+const TAX_LINES = {
+  '': '— not mapped —',
+  '8000': '8000 Gross sales / professional fees', '8230': '8230 Other income', '8290': '8290 Reserves / other',
+  '8320': '8320 Cost of goods sold (purchases)', '8521': '8521 Advertising', '8523': '8523 Meals & entertainment (50%)',
+  '8590': '8590 Bad debts', '8690': '8690 Insurance', '8710': '8710 Interest & bank charges', '8760': '8760 Business taxes, licences, memberships',
+  '8810': '8810 Office expenses', '8811': '8811 Office stationery & supplies', '8860': '8860 Professional fees (legal, accounting)',
+  '8871': '8871 Management & administration fees', '8910': '8910 Rent', '8960': '8960 Repairs & maintenance',
+  '9060': '9060 Salaries, wages & benefits', '9180': '9180 Property taxes', '9200': '9200 Travel', '9220': '9220 Utilities',
+  '9224': '9224 Fuel costs (non-vehicle)', '9275': '9275 Delivery, freight & express', '9281': '9281 Motor vehicle expenses',
+  '9936': '9936 Capital cost allowance (CCA)', '9270': '9270 Other expenses', 'NONDED': 'Not deductible / personal'
+};
+
+/* ---------- storage (IndexedDB) ---------- */
+const IDB_NAME = 'ownbooks', IDB_VER = 1;
+let idb;
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(IDB_NAME, IDB_VER);
+    r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv'); if (!d.objectStoreNames.contains('files')) d.createObjectStore('files', { keyPath: 'id' }); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+function idbReq(store, mode, fn) { return new Promise((res, rej) => { const tx = idb.transaction(store, mode); const st = tx.objectStore(store); const r = fn(st); tx.oncomplete = () => res(r && r.result); tx.onerror = () => rej(tx.error); }); }
+const kvGet = k => idbReq('kv', 'readonly', s => s.get(k));
+const kvSet = (k, v) => idbReq('kv', 'readwrite', s => s.put(v, k));
+const fileGet = id => idbReq('files', 'readonly', s => s.get(id));
+const filePut = f => idbReq('files', 'readwrite', s => s.put(f));
+const fileDel = id => idbReq('files', 'readwrite', s => s.delete(id));
+const fileAll = () => idbReq('files', 'readonly', s => s.getAll());
+const fileClear = () => idbReq('files', 'readwrite', s => s.clear());
+
+let db, fileHandle = null, saveTimer;
+function save() {
+  db.meta.updated = nowISO();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try { await kvSet('db', db); toast('Saved on this device · ' + new Date().toLocaleTimeString()); } catch (e) { alert('Could not save: ' + e.message); }
+    if (fileHandle) writeLinkedFile();
+  }, 150);
+}
+function storageNote() { return fileHandle ? 'Auto-saving to linked file + this device' : 'Data stored only on this device'; }
+
+/* ---------- seed data ---------- */
+function seed() {
+  const A = (number, name, type, subtype, taxLine = '') => ({ id: uid(), number, name, type, subtype: subtype || SUBTYPES[type][0], active: true, desc: '', taxLine });
+  const tax = A('2200', 'GST/HST Payable', 'Liability', 'Other Current Liability');
+  const accounts = [
+    A('1000', 'Chequing', 'Asset', 'Bank'), A('1010', 'Savings', 'Asset', 'Bank'),
+    A('1200', 'Accounts Receivable', 'Asset', 'Accounts Receivable'), A('1300', 'Prepaid Expenses', 'Asset', 'Other Current Asset'),
+    A('1500', 'Equipment & Furniture', 'Asset', 'Fixed Asset'), A('1510', 'Computers', 'Asset', 'Fixed Asset'),
+    A('2000', 'Accounts Payable', 'Liability', 'Accounts Payable'), A('2100', 'Business Credit Card', 'Liability', 'Credit Card'),
+    tax, A('2300', 'Income Tax Payable', 'Liability', 'Other Current Liability'), A('2500', 'Loan Payable', 'Liability', 'Long Term Liability'),
+    A('3000', "Owner's Equity / Contributions", 'Equity'), A('3100', "Owner's Draws", 'Equity'), A('3900', 'Opening Balance Equity', 'Equity'),
+    A('4000', 'Sales / Professional Fees', 'Income', null, '8000'), A('4100', 'Other Income', 'Other Income', null, '8230'), A('4200', 'Interest Income', 'Other Income', null, '8230'),
+    A('5000', 'Cost of Goods Sold', 'Cost of Goods Sold', null, '8320'),
+    A('6000', 'Advertising & Marketing', 'Expense', null, '8521'), A('6010', 'Bank Charges & Fees', 'Expense', null, '8710'),
+    A('6020', 'Dues, Licences & Memberships', 'Expense', null, '8760'), A('6030', 'Insurance', 'Expense', null, '8690'),
+    A('6040', 'Interest Expense', 'Expense', null, '8710'), A('6050', 'Meals & Entertainment', 'Expense', null, '8523'),
+    A('6060', 'Office Supplies', 'Expense', null, '8811'), A('6070', 'Software & Subscriptions', 'Expense', null, '8810'),
+    A('6080', 'Professional Fees', 'Expense', null, '8860'), A('6090', 'Rent', 'Expense', null, '8910'),
+    A('6100', 'Repairs & Maintenance', 'Expense', null, '8960'), A('6110', 'Telephone & Internet', 'Expense', null, '9220'),
+    A('6120', 'Travel', 'Expense', null, '9200'), A('6130', 'Utilities', 'Expense', null, '9220'),
+    A('6140', 'Vehicle Expenses', 'Expense', null, '9281'), A('6150', 'Wages & Salaries', 'Expense', null, '9060'),
+    A('6160', 'Shipping & Courier', 'Expense', null, '9275'), A('6900', 'Other / Miscellaneous', 'Expense', null, '9270'),
+    A('6990', 'Uncategorized Expense', 'Expense', null, '9270'), A('4990', 'Uncategorized Income', 'Income', null, '8000')
+  ];
+  return {
+    version: 1,
+    meta: {
+      company: 'My Business', legalName: '', taxNumber: '', address: '', email: '', phone: '', currency: 'CAD', fyStartMonth: 1,
+      taxAccountId: tax.id, nextInvoice: 1001, theme: 'auto', created: nowISO(), updated: nowISO(),
+      taxRates: [{ id: uid(), name: 'HST 13%', rate: 13 }, { id: uid(), name: 'GST 5%', rate: 5 }, { id: uid(), name: 'HST 15%', rate: 15 }, { id: uid(), name: 'Exempt / No tax', rate: 0 }],
+      customFields: [], invoiceTerms: 'Payment due within 30 days. Thank you for your business.', defaultTermsDays: 30
+    },
+    accounts, customers: [], vendors: [], projects: [], txns: [], bankFeed: [], bankRules: [], history: []
+  };
+}
+function normalize(d) {
+  const s = seed();
+  d.meta = Object.assign({}, s.meta, d.meta || {});
+  for (const k of ['accounts', 'customers', 'vendors', 'projects', 'txns', 'bankFeed', 'bankRules', 'history']) if (!Array.isArray(d[k])) d[k] = [];
+  if (!d.accounts.length) d.accounts = s.accounts;
+  return d;
+}
+
+/* ---------- change history (audit trail with restore) ---------- */
+const COLL = { account: 'accounts', customer: 'customers', vendor: 'vendors', project: 'projects', txn: 'txns', bankRule: 'bankRules' };
+function log(entity, id, action, before, after) {
+  db.history.unshift({ id: uid(), at: nowISO(), entity, entityId: id, action, before: clone(before), after: clone(after) });
+  if (db.history.length > 5000) db.history.length = 5000;
+}
+function upsert(entity, obj, action) {
+  const arr = db[COLL[entity]]; const i = arr.findIndex(x => x.id === obj.id); const before = i >= 0 ? arr[i] : null;
+  if (i >= 0) arr[i] = obj; else arr.push(obj);
+  log(entity, obj.id, action || (before ? 'edited' : 'created'), before, obj); save();
+}
+function removeEntity(entity, id, action) {
+  const arr = db[COLL[entity]]; const i = arr.findIndex(x => x.id === id); if (i < 0) return;
+  const before = arr[i]; arr.splice(i, 1); log(entity, id, action || 'deleted', before, null); save();
+}
+function saveMeta(newMeta, action = 'edited') { const before = db.meta; db.meta = newMeta; _fmt = null; log('settings', 'meta', action, before, newMeta); save(); }
+
+/* ---------- lookups ---------- */
+const acct = id => db.accounts.find(a => a.id === id);
+const acctName = a => a ? (a.number ? a.number + ' · ' : '') + a.name : '(missing account)';
+const byNum = (a, b) => (a.number || '').localeCompare(b.number || '', undefined, { numeric: true }) || a.name.localeCompare(b.name);
+const party = (kind, id) => (kind === 'vendor' ? db.vendors : db.customers).find(p => p.id === id);
+const partyOf = t => { const k = TT[t.type]?.party; return k ? party(k, t.partyId) : null; };
+const proj = id => db.projects.find(p => p.id === id);
+const isBankish = a => a.subtype === 'Bank' || a.subtype === 'Credit Card';
+const arId = () => (db.accounts.find(a => a.subtype === 'Accounts Receivable') || {}).id;
+const apId = () => (db.accounts.find(a => a.subtype === 'Accounts Payable') || {}).id;
+function fyStart(ds) { const m = +db.meta.fyStartMonth || 1; let y = +ds.slice(0, 4); if (+ds.slice(5, 7) < m) y--; return `${y}-${pad(m)}-01`; }
+
+/* ---------- accounting engine ---------- */
+const sumLines = t => r2((t.lines || []).reduce((s, l) => s + (+l.amount || 0), 0));
+function txTotal(t) {
+  switch (t.type) {
+    case 'invoice': case 'bill': case 'expense': case 'deposit': return r2(sumLines(t) + (+t.tax || 0));
+    case 'journal': return r2((t.lines || []).reduce((s, l) => s + (+l.debit || 0), 0));
+    default: return r2(+t.amount || 0);
+  }
+}
+/* Every transaction becomes balanced double-entry postings. Nothing is stored twice – edit a transaction and every report updates. */
+function postings(t) {
+  const P = [];
+  const add = (accountId, dr, cr, memo, projectId) => {
+    const net = r2((+dr || 0) - (+cr || 0)); if (!accountId || !net) return;
+    P.push({ accountId, debit: net > 0 ? net : 0, credit: net < 0 ? -net : 0, memo: memo || t.memo || '', projectId: projectId || t.projectId || '' });
+  };
+  const L = t.lines || [], tax = r2(+t.tax || 0), total = txTotal(t), amt = r2(+t.amount || 0), taxAcc = db.meta.taxAccountId;
+  switch (t.type) {
+    case 'invoice': add(arId(), total, 0); L.forEach(l => add(l.accountId, 0, l.amount, l.desc, l.projectId)); add(taxAcc, 0, tax, 'Sales tax collected'); break;
+    case 'deposit': add(t.bankAccountId, total, 0); L.forEach(l => add(l.accountId, 0, l.amount, l.desc, l.projectId)); add(taxAcc, 0, tax, 'Sales tax collected'); break;
+    case 'bill': L.forEach(l => add(l.accountId, l.amount, 0, l.desc, l.projectId)); add(taxAcc, tax, 0, 'Input tax credit'); add(apId(), 0, total); break;
+    case 'expense': L.forEach(l => add(l.accountId, l.amount, 0, l.desc, l.projectId)); add(taxAcc, tax, 0, 'Input tax credit'); add(t.bankAccountId, 0, total); break;
+    case 'payment': add(t.bankAccountId, amt, 0); add(arId(), 0, amt); break;
+    case 'billpay': add(apId(), amt, 0); add(t.bankAccountId, 0, amt); break;
+    case 'transfer': add(t.toAccountId, amt, 0); add(t.bankAccountId, 0, amt); break;
+    case 'journal': L.forEach(l => add(l.accountId, l.debit, l.credit, l.desc, l.projectId)); break;
+  }
+  return P;
+}
+const live = t => !t.void;
+function inRange(t, from, to) { return (!from || t.date >= from) && (!to || t.date <= to); }
+function balances(from, to, projectId) {
+  const b = {};
+  for (const t of db.txns) {
+    if (!live(t) || !inRange(t, from, to)) continue;
+    for (const p of postings(t)) {
+      if (projectId && p.projectId !== projectId) continue;
+      const x = b[p.accountId] || (b[p.accountId] = { dr: 0, cr: 0 }); x.dr += p.debit; x.cr += p.credit;
+    }
+  }
+  return b;
+}
+const natural = (a, x) => x ? r2(DEBIT_NORMAL.has(a.type) ? x.dr - x.cr : x.cr - x.dr) : 0;
+function netIncome(from, to, projectId) {
+  const b = balances(from, to, projectId); let n = 0;
+  for (const a of db.accounts) if (PL_TYPES.has(a.type)) { const v = natural(a, b[a.id]); n += DEBIT_NORMAL.has(a.type) ? -v : v; }
+  return r2(n);
+}
+function paidAgainst(id, type) { return r2(db.txns.filter(t => live(t) && t.type === type && t.linkId === id).reduce((s, t) => s + (+t.amount || 0), 0)); }
+const openBal = t => t.void ? 0 : r2(txTotal(t) - paidAgainst(t.id, t.type === 'invoice' ? 'payment' : 'billpay'));
+function partyBalance(kind, id) {
+  let s = 0;
+  for (const t of db.txns) {
+    if (!live(t) || t.partyId !== id) continue;
+    if (kind === 'customer') { if (t.type === 'invoice') s += txTotal(t); if (t.type === 'payment') s -= +t.amount || 0; }
+    else { if (t.type === 'bill') s += txTotal(t); if (t.type === 'billpay') s -= +t.amount || 0; }
+  }
+  return r2(s);
+}
+function txStatus(t) {
+  if (t.void) return '<span class="pill void">Void</span>';
+  if (t.type === 'invoice' || t.type === 'bill') {
+    const o = openBal(t); if (o <= 0.004) return '<span class="pill paid">Paid</span>';
+    const over = t.dueDate && t.dueDate < today(); return `<span class="pill open">${over ? 'Overdue' : 'Open'} ${fmt(o)}</span>`;
+  }
+  return '';
+}
+function txName(t) {
+  const p = partyOf(t); if (p) return p.name;
+  if (t.type === 'transfer') return acctName(acct(t.bankAccountId)) + ' → ' + acctName(acct(t.toAccountId));
+  return '';
+}
+function txAccountsLabel(t) {
+  const L = t.lines || []; if (!L.length) return t.bankAccountId ? acctName(acct(t.bankAccountId)) : '';
+  const ids = [...new Set(L.map(l => l.accountId))]; return ids.length > 1 ? '— Split —' : acctName(acct(ids[0]));
+}
+
+/* ---------- UI shell ---------- */
+const ui = { txFilter: { type: '', q: '', from: '', to: '', project: '' }, report: null, histFilter: '', bankAcct: '', bankTab: 'review', showInactive: false };
+const PAGES = {
+  dashboard: ['Dashboard', pageDashboard], transactions: ['Transactions', pageTransactions], banking: ['Banking', pageBanking],
+  customers: ['Clients', pageCustomers], vendors: ['Vendors', pageVendors], projects: ['Projects', pageProjects],
+  accounts: ['Chart of Accounts', pageAccounts], reports: ['Reports', pageReports], taxes: ['Taxes', pageTaxes],
+  receipts: ['Receipts', pageReceipts], history: ['Change History', pageHistory], settings: ['Settings & Data', pageSettings]
+};
+function nav() {
+  const cur = (location.hash.slice(1) || 'dashboard').split('/')[0];
+  $('#nav').innerHTML = `<div class="logo">${esc(db.meta.company)}<small>OwnBooks · your data, your device</small></div>` +
+    Object.entries(PAGES).map(([k, [l]]) => `<a href="#${k}" class="${k === cur ? 'on' : ''}">${l}</a>`).join('');
+}
+function newMenu() {
+  return `<details class="menu" id="newmenu"><summary class="btn primary">+ New</summary><div class="items">
+    <a onclick="snapReceipt()">📷 Snap receipt → expense</a><hr>
+    <a onclick="openTx('expense')">Expense</a><a onclick="openTx('bill')">Bill (to pay later)</a><a onclick="openTx('billpay')">Pay a bill</a><hr>
+    <a onclick="openTx('invoice')">Invoice</a><a onclick="openTx('payment')">Receive payment</a><a onclick="openTx('deposit')">Income / Deposit</a><hr>
+    <a onclick="openTx('transfer')">Transfer</a><a onclick="openTx('journal')">Journal entry</a><hr>
+    <a onclick="openParty('customer')">Client</a><a onclick="openParty('vendor')">Vendor</a><a onclick="openProject()">Project</a><a onclick="openAccount()">Account</a>
+  </div></details>`;
+}
+function render() {
+  const key = (location.hash.slice(1) || 'dashboard').split('/')[0]; const page = PAGES[key] || PAGES.dashboard;
+  document.documentElement.dataset.theme = db.meta.theme === 'auto' ? '' : db.meta.theme;
+  if (db.meta.theme === 'auto') delete document.documentElement.dataset.theme;
+  nav();
+  $('#main').innerHTML = `<div class="top"><h1>${page[0]}</h1><span class="status hide-sm" id="status">${storageNote()}</span>${newMenu()}</div><div id="page"></div>`;
+  $('#page').innerHTML = page[1]();
+  const after = page[1].after; if (after) after();
+  document.title = page[0] + ' · OwnBooks';
+}
+window.addEventListener('hashchange', render);
+document.addEventListener('click', e => { const m = $('#newmenu'); if (m && m.open && !m.contains(e.target)) m.open = false; if (m && e.target.closest('#newmenu .items a')) m.open = false; });
+
+/* ---------- modal ---------- */
+let modalClose = null;
+function openModal(title, body, foot, onClose) {
+  const d = $('#modal');
+  d.innerHTML = `<div class="mhead"><h2>${esc(title)}</h2><button class="icon" onclick="closeModal()" aria-label="Close">✕</button></div><div class="mbody">${body}</div>${foot ? `<div class="mfoot">${foot}</div>` : ''}`;
+  modalClose = onClose || null; if (!d.open) d.showModal(); d.scrollTop = 0;
+}
+function closeModal() { const d = $('#modal'); if (d.open) d.close(); else runModalClose(); }
+function runModalClose() { if ($('#modal').open) return; /* a late 'close' event from a previous dialog must not dismiss the new one */ if (modalClose) { const f = modalClose; modalClose = null; f(); } }
+
+/* ---------- form helpers ---------- */
+function acctOptions(sel, filter, blank = '— choose account —') {
+  let h = `<option value="">${blank}</option>`;
+  for (const ty of TYPES) {
+    const list = db.accounts.filter(a => a.type === ty && (a.active || a.id === sel) && (!filter || filter(a))).sort(byNum);
+    if (!list.length) continue;
+    h += `<optgroup label="${ty}">` + list.map(a => `<option value="${a.id}" ${a.id === sel ? 'selected' : ''}>${esc(acctName(a))}</option>`).join('') + '</optgroup>';
+  }
+  return h;
+}
+function partyOptions(kind, sel, allowNew = true) {
+  const list = (kind === 'vendor' ? db.vendors : db.customers).filter(p => p.active !== false || p.id === sel).sort((a, b) => a.name.localeCompare(b.name));
+  return `<option value="">— none —</option>` + list.map(p => `<option value="${p.id}" ${p.id === sel ? 'selected' : ''}>${esc(p.name)}</option>`).join('') + (allowNew ? `<option value="__new">+ Add new ${kind === 'vendor' ? 'vendor' : 'client'}…</option>` : '');
+}
+function projOptions(sel, allowNew = true) {
+  return `<option value="">— no project —</option>` + db.projects.filter(p => p.status !== 'closed' || p.id === sel).map(p => `<option value="${p.id}" ${p.id === sel ? 'selected' : ''}>${esc(p.name)}</option>`).join('') + (allowNew ? `<option value="__new">+ New project…</option>` : '');
+}
+function handleQuickNew(sel, kind) {
+  if (sel.value !== '__new') return;
+  const name = prompt(kind === 'project' ? 'New project name' : `New ${kind === 'vendor' ? 'vendor' : 'client'} name`);
+  if (!name) { sel.value = ''; return; }
+  const obj = { id: uid(), name: name.trim(), created: nowISO(), custom: {} };
+  if (kind === 'project') { obj.status = 'active'; upsert('project', obj); $$('select[data-proj]').forEach(s => { const v = s === sel ? obj.id : s.value; s.innerHTML = projOptions(v); }); }
+  else { upsert(kind, obj); sel.innerHTML = partyOptions(kind, obj.id); sel.dispatchEvent(new Event('change')); }
+}
+function customFieldsHtml(target, values = {}) {
+  const fields = (db.meta.customFields || []).filter(cf => cf.appliesTo === target || (cf.appliesTo === 'all-txn' && TT[target]));
+  if (!fields.length) return '';
+  return `<div class="section">Custom fields</div><div class="grid">` + fields.map(cf => `<div><label>${esc(cf.label)}</label>${cf.type === 'select'
+    ? `<select name="cf_${cf.id}"><option value=""></option>${(cf.options || '').split(',').map(o => o.trim()).filter(Boolean).map(o => `<option ${values[cf.id] === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`
+    : `<input name="cf_${cf.id}" type="${cf.type === 'number' ? 'number' : cf.type === 'date' ? 'date' : 'text'}" step="any" value="${esc(values[cf.id])}">`}</div>`).join('') + '</div>';
+}
+function readCustom(form) { const o = {}; for (const el of form.elements) if (el.name && el.name.startsWith('cf_')) o[el.name.slice(3)] = el.value; return o; }
+
+/* ---------- receipts / attachments (camera on phones) ---------- */
+let pendingFiles = []; // attachments for the record being edited
+async function compressImage(file, maxDim = 1800, q = 0.82) {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif' || file.type === 'image/svg+xml') return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const s = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', q));
+    return blob && blob.size < file.size ? blob : file;
+  } catch (e) { return file; }
+}
+async function addFiles(fileList, txnId) {
+  for (const f of fileList) {
+    const blob = await compressImage(f);
+    const rec = { id: uid(), txnId, name: f.name || 'receipt.jpg', type: blob.type || f.type, size: blob.size, added: nowISO(), blob };
+    await filePut(rec); pendingFiles.push(rec.id);
+  }
+  renderReceiptStrip(txnId);
+}
+async function filesFor(txnId) { return (await fileAll()).filter(f => f.txnId === txnId); }
+async function renderReceiptStrip(txnId) {
+  const box = $('#receiptStrip'); if (!box) return;
+  const files = await filesFor(txnId);
+  box.innerHTML = files.map(f => {
+    const url = URL.createObjectURL(f.blob);
+    return `<div class="receipt">${f.type.startsWith('image/') ? `<img src="${url}" alt="${esc(f.name)}" onclick="viewFile('${f.id}')">` : `<div class="doc" onclick="viewFile('${f.id}')">📄<br>${esc(f.name.slice(0, 14))}</div>`}
+      <button type="button" class="icon sm" title="Remove" onclick="removeFile('${f.id}','${txnId}')">✕</button></div>`;
+  }).join('') || '<span class="hint">No receipts attached yet.</span>';
+}
+async function removeFile(id, txnId) { if (!confirm('Remove this attachment?')) return; await fileDel(id); renderReceiptStrip(txnId); }
+async function viewFile(id) { const f = await fileGet(id); if (!f) return; const url = URL.createObjectURL(f.blob); const w = window.open(url, '_blank'); if (!w) download(f.name, f.blob); }
+function receiptsHtml(txnId) {
+  return `<div class="section">Receipts & documents</div>
+  <div class="row" style="margin-bottom:8px">
+    <label class="btn" style="margin:0;color:var(--ink)">📷 Take photo<input type="file" accept="image/*" capture="environment" hidden onchange="addFiles(this.files,'${txnId}');this.value=''"></label>
+    <label class="btn" style="margin:0;color:var(--ink)">📎 Attach file<input type="file" accept="image/*,application/pdf" multiple hidden onchange="addFiles(this.files,'${txnId}');this.value=''"></label>
+  </div><div class="receipts" id="receiptStrip"></div>`;
+}
+function snapReceipt() {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+  inp.onchange = () => { openTx('expense'); setTimeout(() => addFiles(inp.files, cur.id), 50); };
+  inp.click();
+}
+
+/* ---------- transaction form ---------- */
+let cur = null; // {type, id, orig}
+function openTxById(id) { const t = db.txns.find(x => x.id === id); if (t) openTx(t.type, t); }
+function nextInvoiceNo() {
+  const nums = db.txns.filter(t => t.type === 'invoice').map(t => parseInt(t.num, 10)).filter(n => !isNaN(n));
+  return String(Math.max(db.meta.nextInvoice || 1001, nums.length ? Math.max(...nums) + 1 : 0));
+}
+function openTx(type, t, preset = {}) {
+  const cfg = TT[type]; const isNew = !t;
+  t = t ? clone(t) : Object.assign({ id: uid(), type, date: today(), lines: cfg.lines ? [{}] : [], custom: {} }, preset);
+  if (isNew && type === 'invoice') { t.num = nextInvoiceNo(); t.dueDate = addDays(t.date, +db.meta.defaultTermsDays || 30); }
+  if (isNew && type === 'bill') t.dueDate = addDays(t.date, 30);
+  if (isNew && cfg.bank && !t.bankAccountId) t.bankAccountId = (db.accounts.find(a => a.active && a.subtype === 'Bank') || {}).id || '';
+  if (isNew && cfg.lines && t.lines.length === 1 && !t.lines[0].accountId) t.lines[0].accountId = defaultLineAcct(type, t.partyId);
+  cur = { type, id: t.id, orig: isNew ? null : db.txns.find(x => x.id === t.id) };
+  pendingFiles = []; ui.pendingFeed = null;
+  const rate0 = (db.meta.taxRates.find(r => r.id === t.taxRateId) || {}).rate || 0;
+  const taxManual = !isNew && +t.tax && Math.abs(+t.tax - r2(sumLines(t) * rate0 / 100)) > 0.009 ? '1' : '';
+  const mode = cfg.lines;
+  const head = `<div class="grid">
+    ${cfg.party ? `<div><label>${cfg.party === 'vendor' ? 'Vendor / Payee' : 'Client'}${cfg.partyOptional ? ' (optional)' : ''}</label><select name="partyId" onchange="handleQuickNew(this,'${cfg.party}');partyChanged()">${partyOptions(cfg.party, t.partyId)}</select></div>` : ''}
+    <div><label>Date</label><input type="date" name="date" value="${esc(t.date)}" required></div>
+    <div><label>${type === 'invoice' ? 'Invoice #' : 'Ref / No.'}</label><input name="num" value="${esc(t.num)}"></div>
+    ${cfg.due ? `<div><label>Due date</label><input type="date" name="dueDate" value="${esc(t.dueDate)}"></div>` : ''}
+    ${cfg.bank ? `<div><label>${cfg.bank}</label><select name="bankAccountId">${acctOptions(t.bankAccountId, a => isBankish(a) || a.subtype === 'Other Current Asset', '— choose —')}</select></div>` : ''}
+    ${cfg.to ? `<div><label>Transfer to</label><select name="toAccountId">${acctOptions(t.toAccountId, a => a.type === 'Asset' || a.type === 'Liability' || a.type === 'Equity')}</select></div>` : ''}
+    ${cfg.link ? `<div><label>Apply to ${cfg.link}</label><select name="linkId" onchange="linkChanged()"></select></div>` : ''}
+    ${cfg.amount ? `<div><label>Amount</label><input type="number" step="0.01" name="amount" class="num" value="${esc(t.amount)}"></div>` : ''}
+    <div><label>Project${mode ? ' (default for lines)' : ''}</label><select name="projectId" data-proj onchange="handleQuickNew(this,'project')">${projOptions(t.projectId)}</select></div>
+  </div>`;
+  let lines = '';
+  if (mode) {
+    const cols = mode === 'item' ? '<th>Account</th><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th>'
+      : mode === 'journal' ? '<th>Account</th><th>Description</th><th class="num">Debit</th><th class="num">Credit</th>'
+        : '<th>Category</th><th>Description</th><th class="num">Amount</th>';
+    lines = `<div class="section">${mode === 'journal' ? 'Journal lines' : type === 'invoice' ? 'Products / services' : 'Category details'}</div>
+    <div class="tablewrap"><table class="lines"><thead><tr>${cols}<th>Project</th><th></th></tr></thead><tbody id="lines">${t.lines.map(l => lineRow(mode, l)).join('')}</tbody></table></div>
+    <div class="row" style="margin-top:8px"><button type="button" onclick="addLine()">+ Add line</button>${mode === 'journal' ? '' : '<span class="hint">Split one payment across several categories or projects by adding lines.</span>'}</div>`;
+  }
+  const taxHtml = cfg.tax ? `<div class="grid" style="margin-top:10px"><div><label>${cfg.tax === 'sale' ? 'Sales tax' : 'Tax paid (ITC)'}</label><select name="taxRateId" onchange="$('[name=tax]').dataset.manual='';recalc()"><option value="">No tax</option>${db.meta.taxRates.map(r => `<option value="${r.id}" ${r.id === t.taxRateId ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
+    <div><label>Tax amount (editable)</label><input type="number" step="0.01" name="tax" class="num" value="${esc(t.tax)}" data-manual="${taxManual}" oninput="this.dataset.manual='1';recalc()"></div>
+    <div><label>&nbsp;</label><label style="color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" name="taxIncl" style="width:auto" ${t.taxIncl ? 'checked' : ''} onchange="$('[name=tax]').dataset.manual='';recalc()"> Amounts include tax</label></div></div>` : '';
+  const body = `<form id="txform" onsubmit="return false" oninput="recalc(event)">
+    ${head}${lines}${taxHtml}
+    <div class="totals" id="totals"></div>
+    <div class="grid" style="margin-top:12px"><div style="grid-column:1/-1"><label>Memo / notes</label><textarea name="memo">${esc(t.memo)}</textarea></div></div>
+    ${customFieldsHtml(type, t.custom)}
+    ${cfg.receipts ? receiptsHtml(t.id) : ''}
+    ${!isNew ? `<div style="margin-top:12px"><label style="color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" name="void" style="width:auto" ${t.void ? 'checked' : ''}> Void this transaction (kept on record, zero effect on books)</label></div>
+      <p class="hint">Created ${esc((t.created || '').slice(0, 16).replace('T', ' '))} · last changed ${esc((t.updated || '').slice(0, 16).replace('T', ' '))} · <a href="#history" onclick="ui.histFilter='${t.id}';closeModal()">view change history</a></p>` : ''}
+    <div class="err" id="txerr"></div></form>`;
+  const foot = `${!isNew ? `<button class="danger" onclick="deleteTx()">Delete</button>` : ''}${type === 'invoice' ? `<button onclick="printInvoice()">Print / PDF</button>` : ''}
+    ${type === 'invoice' && !isNew && openBal(t) > 0 ? `<button onclick="closeModal();openTx('payment',null,{partyId:'${t.partyId}',linkId:'${t.id}',amount:${openBal(t)}})">Receive payment</button>` : ''}
+    ${type === 'bill' && !isNew && openBal(t) > 0 ? `<button onclick="closeModal();openTx('billpay',null,{partyId:'${t.partyId}',linkId:'${t.id}',amount:${openBal(t)}})">Pay bill</button>` : ''}
+    <span class="sp"></span><button onclick="closeModal()">Cancel</button><button onclick="saveTx(true)">Save & new</button><button class="primary" onclick="saveTx()">Save</button>`;
+  openModal((isNew ? 'New ' : 'Edit ') + cfg.label, body, foot, () => { if (cur && !cur.saved && !cur.orig) pendingFiles.forEach(id => fileDel(id)); });
+  if (cfg.link) partyChanged(t.linkId);
+  if (cfg.receipts) renderReceiptStrip(t.id);
+  recalc();
+}
+function defaultLineAcct(type, partyId) {
+  const v = partyId && type !== 'invoice' && type !== 'deposit' ? party('vendor', partyId) : null; if (v && v.defaultAccountId) return v.defaultAccountId;
+  const c = partyId && (type === 'invoice' || type === 'deposit') ? party('customer', partyId) : null; if (c && c.defaultAccountId) return c.defaultAccountId;
+  const want = type === 'invoice' || type === 'deposit' ? 'Income' : type === 'journal' ? null : 'Expense';
+  return want ? ((db.accounts.filter(a => a.active && a.type === want).sort(byNum)[0]) || {}).id || '' : '';
+}
+function lineRow(mode, l = {}) {
+  const n = (f, v, cls = 'num') => `<td><input data-f="${f}" type="number" step="any" class="${cls}" value="${v ?? ''}" placeholder="${f[0].toUpperCase() + f.slice(1)}" style="min-width:80px"></td>`;
+  let mid = mode === 'item' ? n('qty', l.qty ?? 1) + n('rate', l.rate) + n('amount', l.amount) : mode === 'journal' ? n('debit', l.debit) + n('credit', l.credit) : n('amount', l.amount);
+  return `<tr class="line"><td style="min-width:190px"><select data-f="accountId">${acctOptions(l.accountId)}</select></td>
+    <td style="min-width:160px"><input data-f="desc" value="${esc(l.desc)}" placeholder="Description"></td>${mid}
+    <td style="min-width:130px"><select data-f="projectId" data-proj onchange="handleQuickNew(this,'project')">${projOptions(l.projectId)}</select></td>
+    <td><button type="button" class="icon" title="Remove line" onclick="this.closest('tr').remove();recalc()">✕</button></td></tr>`;
+}
+function addLine() { const f = $('#txform'); $('#lines').insertAdjacentHTML('beforeend', lineRow(TT[cur.type].lines, { accountId: cur.type === 'journal' ? '' : defaultLineAcct(cur.type, f.elements.partyId?.value) })); }
+function partyChanged(keepLink) {
+  const f = $('#txform'); const cfg = TT[cur.type]; const pid = f.elements.partyId?.value || '';
+  if (cfg.link) {
+    const docs = db.txns.filter(t => t.type === cfg.link && live(t) && t.partyId === pid && (openBal(t) > 0.004 || t.id === keepLink || t.id === f.elements.linkId.value));
+    f.elements.linkId.innerHTML = `<option value="">— not applied (on account) —</option>` + docs.map(t => `<option value="${t.id}" ${t.id === (keepLink || f.elements.linkId.value) ? 'selected' : ''}>#${esc(t.num || '')} · ${t.date} · open ${fmt(openBal(t))}</option>`).join('');
+  }
+  if (cfg.lines && pid && !cur.orig) { const d = defaultLineAcct(cur.type, pid); if (d) $$('#lines tr.line').forEach(tr => { const s = tr.querySelector('[data-f=accountId]'); if (s && !tr.querySelector('[data-f=amount]')?.value) s.value = d; }); }
+}
+function linkChanged() { const f = $('#txform'); const d = db.txns.find(t => t.id === f.elements.linkId.value); if (d && !(+f.elements.amount.value)) f.elements.amount.value = openBal(d); }
+function readLines() {
+  return $$('#lines tr.line').map(tr => { const o = {}; tr.querySelectorAll('[data-f]').forEach(i => o[i.dataset.f] = i.type === 'number' ? (i.value === '' ? '' : +i.value) : i.value); return o; })
+    .filter(l => l.accountId || +l.amount || +l.debit || +l.credit || l.desc)
+    .map(l => { for (const k of ['amount', 'debit', 'credit']) if (k in l) l[k] = l[k] === '' ? 0 : r2(l[k]); return l; });
+}
+function recalc(e) {
+  const f = $('#txform'); if (!f || !cur) return; const cfg = TT[cur.type];
+  if (e && e.target && (e.target.dataset.f === 'qty' || e.target.dataset.f === 'rate')) { const tr = e.target.closest('tr'); const q = +tr.querySelector('[data-f=qty]').value || 0, r = +tr.querySelector('[data-f=rate]').value || 0; tr.querySelector('[data-f=amount]').value = r2(q * r); }
+  if (e && e.target && e.target.name && e.target.name.startsWith('cf_')) return;
+  let h = '';
+  if (cfg.lines === 'journal') {
+    const L = readLines(), d = r2(L.reduce((s, l) => s + l.debit, 0)), c = r2(L.reduce((s, l) => s + l.credit, 0));
+    h = `<span>Total debits</span><span class="right">${fmt(d)}</span><span>Total credits</span><span class="right">${fmt(c)}</span><span>Difference</span><span class="right ${d !== c ? 'err' : ''}">${fmt(d - c)}</span>`;
+  } else if (cfg.lines) {
+    const L = readLines(); let sub = r2(L.reduce((s, l) => s + l.amount, 0)); let tax = 0;
+    if (cfg.tax) {
+      const rate = (db.meta.taxRates.find(r => r.id === f.elements.taxRateId.value) || {}).rate || 0; const ti = f.elements.tax; const incl = f.elements.taxIncl.checked;
+      if (!ti.dataset.manual) ti.value = rate ? (incl ? r2(sub - sub / (1 + rate / 100)) : r2(sub * rate / 100)) : '';
+      tax = r2(+ti.value || 0); if (incl) sub = r2(sub - tax);
+      h = `<span>Subtotal</span><span class="right">${fmt(sub)}</span><span>Tax</span><span class="right">${fmt(tax)}</span>`;
+    }
+    h += `<span class="t">Total</span><span class="right t">${fmt(sub + tax)}</span>`;
+  }
+  $('#totals').innerHTML = h;
+}
+function saveTx(andNew) {
+  const f = $('#txform'), E = f.elements, cfg = TT[cur.type], err = m => { $('#txerr').textContent = m; return false; };
+  const t = cur.orig ? clone(cur.orig) : { id: cur.id, type: cur.type, created: nowISO() };
+  t.date = E.date.value; t.num = E.num.value.trim(); t.memo = E.memo.value; t.projectId = E.projectId.value === '__new' ? '' : E.projectId.value;
+  if (cfg.party) t.partyId = E.partyId.value === '__new' ? '' : E.partyId.value;
+  if (cfg.due) t.dueDate = E.dueDate.value;
+  if (cfg.bank) t.bankAccountId = E.bankAccountId.value;
+  if (cfg.to) t.toAccountId = E.toAccountId.value;
+  if (cfg.link) t.linkId = E.linkId.value;
+  if (cfg.amount) t.amount = r2(E.amount.value);
+  if (cfg.lines) { t.lines = readLines(); t.lines.forEach(l => { if (l.projectId === '__new') l.projectId = ''; if (!l.projectId && t.projectId) l.projectId = t.projectId; }); }
+  if (cfg.tax) {
+    t.taxRateId = E.taxRateId.value; t.tax = r2(E.tax.value); t.taxIncl = E.taxIncl.checked;
+    if (t.taxIncl && t.tax) { // store lines net of tax so postings stay exact
+      const gross = sumLines(t); const ratio = gross ? (gross - t.tax) / gross : 1; let run = 0;
+      t.lines.forEach((l, i) => { if (i === t.lines.length - 1) l.amount = r2(gross - t.tax - run); else { l.amount = r2(l.amount * ratio); run = r2(run + l.amount); } if (cur.type === 'invoice' && l.qty) l.rate = r2(l.amount / l.qty); });
+      t.taxIncl = false;
+    }
+  }
+  t.custom = readCustom(f); if (E.void) t.void = E.void.checked; t.updated = nowISO();
+  if (!t.date) return err('Date is required.');
+  if (cfg.party && !cfg.partyOptional && !t.partyId) return err(`Choose a ${cfg.party === 'vendor' ? 'vendor' : 'client'}.`);
+  if (cfg.bank && !t.bankAccountId) return err(`Choose the "${cfg.bank}" account.`);
+  if (cfg.to && (!t.toAccountId || t.toAccountId === t.bankAccountId)) return err('Choose two different accounts to transfer between.');
+  if (cfg.amount && !t.amount) return err('Enter an amount.');
+  if (cfg.lines) {
+    if (!t.lines.length) return err('Add at least one line.');
+    if (t.lines.some(l => !l.accountId)) return err('Every line needs an account/category.');
+    if (cfg.lines === 'journal') { const d = r2(t.lines.reduce((s, l) => s + l.debit, 0)), c = r2(t.lines.reduce((s, l) => s + l.credit, 0)); if (d !== c) return err(`Debits (${fmt(d)}) must equal credits (${fmt(c)}).`); if (!d) return err('Journal entry is empty.'); }
+  }
+  if ((cfg.tax) && t.tax && !db.meta.taxAccountId) return err('Set a sales tax account in Settings first.');
+  if (cur.type === 'invoice' && t.num && /^\d+$/.test(t.num)) db.meta.nextInvoice = Math.max(+db.meta.nextInvoice || 0, +t.num + 1);
+  cur.saved = true;
+  upsert('txn', t);
+  const fb = ui.pendingFeed; if (fb) { const it = db.bankFeed.find(x => x.id === fb); if (it) { it.status = 'added'; it.txnId = t.id; save(); } ui.pendingFeed = null; }
+  const type = cur.type; closeModal(); render(); toast(TT[type].label + ' saved');
+  if (andNew) openTx(type);
+}
+function deleteTx() {
+  if (!confirm('Delete this transaction? (It stays in Change History and can be restored.) Tip: "Void" keeps it on record instead.')) return;
+  const id = cur.id; cur.saved = true; removeEntity('txn', id);
+  db.bankFeed.forEach(b => { if (b.txnId === id) { b.status = 'review'; b.txnId = ''; } });
+  closeModal(); render();
+}
+
+/* ---------- invoice printing ---------- */
+function printInvoice() {
+  const f = $('#txform'); const E = f.elements; const L = readLines(); const c = party('customer', E.partyId.value) || {};
+  const sub = r2(L.reduce((s, l) => s + l.amount, 0)); const tax = r2(E.tax.value || 0); const incl = E.taxIncl.checked; const net = incl ? sub - tax : sub;
+  const m = db.meta; const w = window.open('', '_blank'); if (!w) return alert('Allow pop-ups to print invoices.');
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${esc(E.num.value)}</title><style>body{font:14px system-ui,sans-serif;color:#222;max-width:760px;margin:30px auto;padding:0 20px}h1{margin:0;font-size:28px;color:#1f6f50}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}th{background:#f3f5f4}.n{text-align:right}.hd{display:flex;justify-content:space-between;gap:20px}.tot td{font-weight:700}</style></head><body>
+  <div class="hd"><div><h2 style="margin:0">${esc(m.legalName || m.company)}</h2><div style="white-space:pre-line">${esc(m.address)}</div><div>${esc(m.email)} ${esc(m.phone)}</div>${m.taxNumber ? `<div>GST/HST #: ${esc(m.taxNumber)}</div>` : ''}</div>
+  <div style="text-align:right"><h1>INVOICE</h1><div># ${esc(E.num.value)}</div><div>Date: ${esc(E.date.value)}</div><div>Due: ${esc(E.dueDate.value)}</div></div></div>
+  <div style="margin-top:24px"><strong>Bill to</strong><div>${esc(c.name || '')}</div><div>${esc(c.company || '')}</div><div style="white-space:pre-line">${esc(c.address || '')}</div><div>${esc(c.email || '')}</div></div>
+  <table><tr><th>Description</th><th class="n">Qty</th><th class="n">Rate</th><th class="n">Amount</th></tr>
+  ${L.map(l => `<tr><td>${esc(l.desc || acctName(acct(l.accountId)).replace(/^\S+ · /, ''))}</td><td class="n">${l.qty ?? ''}</td><td class="n">${l.rate !== '' && l.rate != null ? fmt(l.rate) : ''}</td><td class="n">${fmt(l.amount)}</td></tr>`).join('')}
+  <tr><td colspan="3" class="n">Subtotal</td><td class="n">${fmt(net)}</td></tr><tr><td colspan="3" class="n">Tax</td><td class="n">${fmt(tax)}</td></tr><tr class="tot"><td colspan="3" class="n">Total</td><td class="n">${fmt(net + tax)}</td></tr></table>
+  <p style="white-space:pre-line">${esc(E.memo.value)}</p><p style="color:#666">${esc(m.invoiceTerms)}</p><script>setTimeout(()=>print(),300)<\/script></body></html>`);
+  w.document.close();
+}
+
+/* ---------- pages: dashboard ---------- */
+function pageDashboard() {
+  const t0 = today(), fs = fyStart(t0); const b = balances(null, t0); const bp = balances(fs, t0);
+  const banks = db.accounts.filter(a => isBankish(a) && a.active);
+  let inc = 0, exp = 0; for (const a of db.accounts) { const v = natural(a, bp[a.id]); if (a.type === 'Income' || a.type === 'Other Income') inc += v; if (a.type === 'Expense' || a.type === 'Other Expense' || a.type === 'Cost of Goods Sold') exp += v; }
+  const openInv = db.txns.filter(t => t.type === 'invoice' && live(t)).map(t => [t, openBal(t)]).filter(x => x[1] > 0.004);
+  const openBills = db.txns.filter(t => t.type === 'bill' && live(t)).map(t => [t, openBal(t)]).filter(x => x[1] > 0.004);
+  const overdue = openInv.filter(([t]) => t.dueDate && t.dueDate < t0);
+  const review = db.bankFeed.filter(x => x.status === 'review').length;
+  const recent = [...db.txns].sort((a, b) => (b.updated || '').localeCompare(a.updated || '')).slice(0, 8);
+  const empty = !db.txns.length;
+  return `${empty ? `<div class="card" style="margin-bottom:16px"><strong>Welcome!</strong> Start by setting your business name and tax rates in <a href="#settings">Settings</a>, importing a bank statement in <a href="#banking">Banking</a>, or tapping <b>+ New</b>. Everything you enter is saved only on this device. Use <a href="#settings">Settings → Back up</a> to keep a copy.</div>` : ''}
+  <div class="cards">
+    <div class="card kpi"><div class="l">Income (fiscal YTD)</div><div class="v">${fmt(inc)}</div></div>
+    <div class="card kpi"><div class="l">Expenses (fiscal YTD)</div><div class="v">${fmt(exp)}</div></div>
+    <div class="card kpi"><div class="l">Net profit (fiscal YTD)</div><div class="v" style="color:${inc - exp < 0 ? 'var(--danger)' : 'var(--ok)'}">${fmt(inc - exp)}</div></div>
+    <div class="card kpi"><div class="l">Clients owe you · ${openInv.length} invoices</div><div class="v">${fmt(openInv.reduce((s, x) => s + x[1], 0))}</div>${overdue.length ? `<div class="hint" style="color:var(--danger)">${overdue.length} overdue · ${fmt(overdue.reduce((s, x) => s + x[1], 0))}</div>` : ''}</div>
+    <div class="card kpi"><div class="l">You owe vendors · ${openBills.length} bills</div><div class="v">${fmt(openBills.reduce((s, x) => s + x[1], 0))}</div></div>
+    <div class="card kpi"><div class="l">Bank items to review</div><div class="v">${review}</div><a href="#banking">Go to banking →</a></div>
+  </div>
+  <div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+    <div class="card"><div class="section" style="margin-top:0">Bank & card balances</div><table>${banks.map(a => `<tr class="click" onclick="openRegister('${a.id}')"><td>${esc(a.name)}</td><td class="num">${fmt(natural(a, b[a.id]))}</td></tr>`).join('') || '<tr><td class="muted">No bank accounts</td></tr>'}</table></div>
+    <div class="card"><div class="section" style="margin-top:0">Recently changed</div><table>${recent.map(t => `<tr class="click" onclick="openTxById('${t.id}')"><td>${t.date}</td><td>${TT[t.type].label}<div class="hint">${esc(txName(t))}</div></td><td class="num">${fmt(txTotal(t))}</td></tr>`).join('') || '<tr><td class="muted">Nothing yet</td></tr>'}</table></div>
+  </div>
+  <button class="primary fab" onclick="snapReceipt()">📷 Receipt</button>`;
+}
+
+/* ---------- pages: transactions ---------- */
+function filteredTx() {
+  const F = ui.txFilter, q = F.q.toLowerCase();
+  return db.txns.filter(t => (!F.type || t.type === F.type) && inRange(t, F.from, F.to)
+    && (!F.project || t.projectId === F.project || (t.lines || []).some(l => l.projectId === F.project))
+    && (!q || [t.num, t.memo, txName(t), txAccountsLabel(t), String(txTotal(t)), ...(t.lines || []).map(l => l.desc), ...Object.values(t.custom || {})].join(' ').toLowerCase().includes(q)))
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.created || '').localeCompare(a.created || ''));
+}
+function pageTransactions() {
+  const F = ui.txFilter; const list = filteredTx();
+  return `<div class="filters">
+    <div><label>Type</label><select onchange="ui.txFilter.type=this.value;render()"><option value="">All</option>${Object.entries(TT).map(([k, v]) => `<option value="${k}" ${F.type === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
+    <div><label>From</label><input type="date" value="${F.from}" onchange="ui.txFilter.from=this.value;render()"></div>
+    <div><label>To</label><input type="date" value="${F.to}" onchange="ui.txFilter.to=this.value;render()"></div>
+    <div><label>Project</label><select onchange="ui.txFilter.project=this.value;render()">${projOptions(F.project, false).replace('— no project —', 'All projects')}</select></div>
+    <div style="flex:1;min-width:180px"><label>Search</label><input id="txq" value="${esc(F.q)}" placeholder="name, memo, amount…" oninput="ui.txFilter.q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#txq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},300)"></div>
+    <div><label>&nbsp;</label><button onclick="exportTxCSV()">Export CSV</button></div></div>
+  <div class="tablewrap"><table><thead><tr><th>Date</th><th>Type</th><th>No.</th><th>Name</th><th class="hide-sm">Category / account</th><th class="hide-sm">Project</th><th class="num">Total</th><th>Status</th></tr></thead><tbody>
+  ${list.slice(0, 1000).map(t => `<tr class="click" onclick="openTxById('${t.id}')"><td>${t.date}</td><td>${TT[t.type].label}</td><td>${esc(t.num)}</td><td>${esc(txName(t))}</td><td class="hide-sm">${esc(txAccountsLabel(t))}</td><td class="hide-sm">${esc(projNames(t))}</td><td class="num">${fmt(txTotal(t))}</td><td>${txStatus(t)}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">No transactions match.</td></tr>'}
+  </tbody></table></div><p class="hint">${list.length} transactions${list.length > 1000 ? ' (showing first 1000 — narrow with filters)' : ''}. Click any row to edit it — every report updates automatically.</p>`;
+}
+function projNames(t) { const ids = new Set([t.projectId, ...(t.lines || []).map(l => l.projectId)].filter(Boolean)); return [...ids].map(id => proj(id)?.name || '').join(', '); }
+function exportTxCSV() {
+  const rows = [['Date', 'Type', 'No', 'Name', 'Account', 'Description', 'Project', 'Debit', 'Credit', 'Memo', 'Void']];
+  for (const t of filteredTx().reverse()) for (const p of postings(t)) rows.push([t.date, TT[t.type].label, t.num, txName(t), acctName(acct(p.accountId)), p.memo, proj(p.projectId)?.name || '', p.debit || '', p.credit || '', t.memo, t.void ? 'yes' : '']);
+  download('transactions.csv', toCSV(rows), 'text/csv');
+}
+
+/* ---------- pages: clients / vendors ---------- */
+function pageCustomers() { return partyPage('customer'); }
+function pageVendors() { return partyPage('vendor'); }
+function partyPage(kind) {
+  const list = (kind === 'vendor' ? db.vendors : db.customers).filter(p => ui.showInactive || p.active !== false).sort((a, b) => a.name.localeCompare(b.name));
+  const lbl = kind === 'vendor' ? 'vendor' : 'client';
+  return `<div class="row" style="margin-bottom:12px"><button class="primary" onclick="openParty('${kind}')">+ New ${lbl}</button><label style="color:var(--ink);display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" style="width:auto" ${ui.showInactive ? 'checked' : ''} onchange="ui.showInactive=this.checked;render()"> Show inactive</label></div>
+  <div class="tablewrap"><table><thead><tr><th>Name</th><th class="hide-sm">Company</th><th class="hide-sm">Email</th><th class="hide-sm">Phone</th><th class="num">Open balance</th><th class="num">Total ${kind === 'vendor' ? 'spent' : 'billed'} (all time)</th></tr></thead><tbody>
+  ${list.map(p => { const tot = db.txns.filter(t => live(t) && t.partyId === p.id && (kind === 'vendor' ? ['bill', 'expense'] : ['invoice', 'deposit']).includes(t.type)).reduce((s, t) => s + txTotal(t), 0);
+    return `<tr class="click" onclick="openParty('${kind}','${p.id}')"><td>${esc(p.name)}${p.active === false ? ' <span class="pill">inactive</span>' : ''}</td><td class="hide-sm">${esc(p.company)}</td><td class="hide-sm">${esc(p.email)}</td><td class="hide-sm">${esc(p.phone)}</td><td class="num">${fmt(partyBalance(kind, p.id))}</td><td class="num">${fmt(tot)}</td></tr>`; }).join('') || `<tr><td colspan="6" class="muted">No ${lbl}s yet.</td></tr>`}
+  </tbody></table></div>`;
+}
+function openParty(kind, id) {
+  const p = id ? clone(party(kind, id)) : { id: uid(), name: '', custom: {}, active: true };
+  const txs = id ? db.txns.filter(t => t.partyId === id).sort((a, b) => b.date.localeCompare(a.date)) : [];
+  const F = (n, l, type = 'text') => `<div><label>${l}</label><input name="${n}" type="${type}" value="${esc(p[n])}"></div>`;
+  const body = `<form id="pform" onsubmit="return false"><div class="grid">${F('name', 'Display name *')}${F('company', 'Company')}${F('email', 'Email', 'email')}${F('phone', 'Phone', 'tel')}${F('taxNumber', kind === 'vendor' ? 'Vendor GST/HST #' : 'Client tax #')}${F('website', 'Website')}
+    <div><label>Default ${kind === 'vendor' ? 'expense category' : 'income account'}</label><select name="defaultAccountId">${acctOptions(p.defaultAccountId, a => PL_TYPES.has(a.type), '— none —')}</select></div>
+    <div><label>Status</label><select name="active"><option value="1">Active</option><option value="0" ${p.active === false ? 'selected' : ''}>Inactive</option></select></div>
+    <div style="grid-column:1/-1"><label>Address</label><textarea name="address">${esc(p.address)}</textarea></div><div style="grid-column:1/-1"><label>Notes</label><textarea name="notes">${esc(p.notes)}</textarea></div></div>
+    ${customFieldsHtml(kind, p.custom)}<div class="err" id="perr"></div></form>
+    ${id ? `<div class="section">Transactions · open balance ${fmt(partyBalance(kind, id))}</div><div class="row" style="margin-bottom:8px">${kind === 'customer' ? `<button onclick="closeModal();openTx('invoice',null,{partyId:'${id}'})">New invoice</button><button onclick="closeModal();openTx('payment',null,{partyId:'${id}'})">Receive payment</button>` : `<button onclick="closeModal();openTx('expense',null,{partyId:'${id}'})">New expense</button><button onclick="closeModal();openTx('bill',null,{partyId:'${id}'})">New bill</button><button onclick="closeModal();openTx('billpay',null,{partyId:'${id}'})">Pay bill</button>`}</div>
+    <div class="tablewrap"><table><tr><th>Date</th><th>Type</th><th>No.</th><th class="num">Total</th><th>Status</th></tr>${txs.map(t => `<tr class="click" onclick="openTxById('${t.id}')"><td>${t.date}</td><td>${TT[t.type].label}</td><td>${esc(t.num)}</td><td class="num">${fmt(txTotal(t))}</td><td>${txStatus(t)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">None</td></tr>'}</table></div>` : ''}`;
+  openModal((id ? 'Edit ' : 'New ') + (kind === 'vendor' ? 'vendor' : 'client'), body,
+    `${id ? `<button class="danger" onclick="deleteParty('${kind}','${id}')">Delete</button>` : ''}<span class="sp"></span><button onclick="closeModal()">Cancel</button><button class="primary" onclick="saveParty('${kind}','${p.id}',${!!id})">Save</button>`);
+}
+function saveParty(kind, id, existing) {
+  const f = $('#pform'), E = f.elements; const p = existing ? clone(party(kind, id)) : { id, created: nowISO() };
+  for (const k of ['name', 'company', 'email', 'phone', 'taxNumber', 'website', 'address', 'notes', 'defaultAccountId']) p[k] = E[k].value.trim();
+  p.active = E.active.value === '1'; p.custom = readCustom(f); p.updated = nowISO();
+  if (!p.name) { $('#perr').textContent = 'Name is required.'; return; }
+  upsert(kind, p); closeModal(); render();
+}
+function deleteParty(kind, id) {
+  if (db.txns.some(t => t.partyId === id)) return alert('This name has transactions. Mark it Inactive instead (keeps your history intact).');
+  if (!confirm('Delete?')) return; removeEntity(kind, id); closeModal(); render();
+}
+
+/* ---------- pages: projects ---------- */
+function projectPL(pid) { const b = balances(null, null, pid); let inc = 0, exp = 0; for (const a of db.accounts) { const v = natural(a, b[a.id]); if (a.type === 'Income' || a.type === 'Other Income') inc += v; else if (PL_TYPES.has(a.type)) exp += v; } return { inc: r2(inc), exp: r2(exp) }; }
+function pageProjects() {
+  return `<div class="row" style="margin-bottom:12px"><button class="primary" onclick="openProject()">+ New project</button><span class="hint">Tag any expense, bill, invoice or line with a project to track its profitability separately.</span></div>
+  <div class="tablewrap"><table><thead><tr><th>Project</th><th class="hide-sm">Client</th><th>Status</th><th class="num">Income</th><th class="num">Costs</th><th class="num">Profit</th><th class="num hide-sm">Budget</th><th></th></tr></thead><tbody>
+  ${db.projects.map(p => { const x = projectPL(p.id); return `<tr class="click" onclick="openProject('${p.id}')"><td>${esc(p.name)}</td><td class="hide-sm">${esc(party('customer', p.customerId)?.name || '')}</td><td><span class="pill">${esc(p.status || 'active')}</span></td><td class="num">${fmt(x.inc)}</td><td class="num">${fmt(x.exp)}</td><td class="num">${fmt(x.inc - x.exp)}</td><td class="num hide-sm">${p.budget ? fmt(p.budget) : ''}</td><td><button class="sm" onclick="event.stopPropagation();runReport('pl',{project:'${p.id}',from:'',to:''})">P&L</button></td></tr>`; }).join('') || '<tr><td colspan="8" class="muted">No projects yet.</td></tr>'}
+  </tbody></table></div>`;
+}
+function openProject(id) {
+  const p = id ? clone(proj(id)) : { id: uid(), name: '', status: 'active' };
+  openModal(id ? 'Edit project' : 'New project', `<form id="prform" onsubmit="return false"><div class="grid">
+    <div><label>Name *</label><input name="name" value="${esc(p.name)}"></div>
+    <div><label>Client</label><select name="customerId">${partyOptions('customer', p.customerId, false)}</select></div>
+    <div><label>Status</label><select name="status">${['active', 'on hold', 'closed'].map(s => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+    <div><label>Budget</label><input name="budget" type="number" step="0.01" class="num" value="${esc(p.budget)}"></div>
+    <div><label>Start</label><input type="date" name="start" value="${esc(p.start)}"></div><div><label>End</label><input type="date" name="end" value="${esc(p.end)}"></div>
+    <div style="grid-column:1/-1"><label>Notes</label><textarea name="notes">${esc(p.notes)}</textarea></div></div></form>`,
+    `${id ? `<button class="danger" onclick="if(confirm('Delete project? Transactions keep their amounts but lose the tag.')){removeEntity('project','${id}');closeModal();render()}">Delete</button>` : ''}<span class="sp"></span><button onclick="closeModal()">Cancel</button><button class="primary" onclick="saveProject('${p.id}')">Save</button>`);
+}
+function saveProject(id) {
+  const E = $('#prform').elements; const p = clone(proj(id)) || { id, created: nowISO() };
+  p.name = E.name.value.trim(); if (!p.name) return alert('Name required'); p.customerId = E.customerId.value; p.status = E.status.value; p.budget = E.budget.value ? r2(E.budget.value) : ''; p.start = E.start.value; p.end = E.end.value; p.notes = E.notes.value;
+  upsert('project', p); closeModal(); render();
+}
+
+/* ---------- pages: chart of accounts ---------- */
+function pageAccounts() {
+  const b = balances(null, today());
+  return `<div class="row" style="margin-bottom:12px"><button class="primary" onclick="openAccount()">+ New account</button><label style="color:var(--ink);display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" style="width:auto" ${ui.showInactive ? 'checked' : ''} onchange="ui.showInactive=this.checked;render()"> Show inactive</label></div>
+  <div class="tablewrap"><table><thead><tr><th>No.</th><th>Name</th><th class="hide-sm">Detail type</th><th class="hide-sm">Tax line</th><th class="num">Balance</th><th></th></tr></thead><tbody>
+  ${TYPES.map(ty => { const list = db.accounts.filter(a => a.type === ty && (ui.showInactive || a.active)).sort(byNum); if (!list.length) return '';
+    return `<tr class="sec"><td colspan="6">${ty}</td></tr>` + list.map(a => `<tr class="click" onclick="openAccount('${a.id}')"><td>${esc(a.number)}</td><td>${esc(a.name)}${a.active ? '' : ' <span class="pill">inactive</span>'}</td><td class="hide-sm">${esc(a.subtype)}</td><td class="hide-sm">${esc(a.taxLine || '')}</td><td class="num">${PL_TYPES.has(a.type) ? '<span class="hint">see P&L</span>' : fmt(natural(a, b[a.id]))}</td><td><button class="sm" onclick="event.stopPropagation();openRegister('${a.id}')">Ledger</button></td></tr>`).join(''); }).join('')}
+  </tbody></table></div>`;
+}
+function openAccount(id) {
+  const a = id ? clone(acct(id)) : { id: uid(), type: 'Expense', subtype: 'Expense', active: true, name: '', number: '' };
+  const used = id && db.txns.some(t => postings(t).some(p => p.accountId === id));
+  openModal(id ? 'Edit account' : 'New account', `<form id="aform" onsubmit="return false"><div class="grid">
+    <div><label>Number</label><input name="number" value="${esc(a.number)}"></div><div><label>Name *</label><input name="name" value="${esc(a.name)}"></div>
+    <div><label>Account type</label><select name="type" onchange="this.form.subtype.innerHTML=SUBTYPES[this.value].map(s=>'<option>'+s+'</option>').join('')">${TYPES.map(t => `<option ${a.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    <div><label>Detail type</label><select name="subtype">${SUBTYPES[a.type].map(s => `<option ${a.subtype === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+    <div><label>Tax return line (T2125)</label><select name="taxLine">${Object.entries(TAX_LINES).map(([k, v]) => `<option value="${k}" ${a.taxLine === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
+    <div><label>Status</label><select name="active"><option value="1">Active</option><option value="0" ${a.active ? '' : 'selected'}>Inactive</option></select></div>
+    ${id ? '' : `<div><label>Opening balance (optional)</label><input name="ob" type="number" step="0.01" class="num"></div><div><label>as of</label><input name="obDate" type="date" value="${today()}"></div>`}
+    <div style="grid-column:1/-1"><label>Description</label><input name="desc" value="${esc(a.desc)}"></div></div></form>
+    ${used ? '<p class="hint">This account has transactions — changing its type re-classifies them on every report.</p>' : ''}`,
+    `${id ? `<button class="danger" onclick="deleteAccount('${id}')">Delete</button><button onclick="closeModal();openRegister('${id}')">View ledger</button>` : ''}<span class="sp"></span><button onclick="closeModal()">Cancel</button><button class="primary" onclick="saveAccount('${a.id}',${!!id})">Save</button>`);
+}
+function saveAccount(id, existing) {
+  const E = $('#aform').elements; const a = existing ? clone(acct(id)) : { id };
+  a.number = E.number.value.trim(); a.name = E.name.value.trim(); a.type = E.type.value; a.subtype = E.subtype.value; a.taxLine = E.taxLine.value; a.active = E.active.value === '1'; a.desc = E.desc.value;
+  if (!a.name) return alert('Name required');
+  upsert('account', a);
+  if (!existing && E.ob && +E.ob.value) {
+    const ob = r2(E.ob.value), obe = db.accounts.find(x => x.name === 'Opening Balance Equity') || db.accounts.find(x => x.type === 'Equity');
+    const dr = DEBIT_NORMAL.has(a.type); upsert('txn', { id: uid(), type: 'journal', date: E.obDate.value || today(), num: 'OB', memo: 'Opening balance – ' + a.name, created: nowISO(), updated: nowISO(), custom: {},
+      lines: [{ accountId: a.id, desc: 'Opening balance', debit: dr ? ob : 0, credit: dr ? 0 : ob }, { accountId: obe.id, desc: 'Opening balance', debit: dr ? 0 : ob, credit: dr ? ob : 0 }] });
+  }
+  closeModal(); render();
+}
+function deleteAccount(id) {
+  if (db.txns.some(t => postings(t).some(p => p.accountId === id))) return alert('This account is used by transactions. Make it Inactive instead, or move those transactions first.');
+  if ([db.meta.taxAccountId, arId(), apId()].includes(id) && !confirm('This is a system account (tax / receivable / payable). Delete anyway?')) return;
+  if (!confirm('Delete account?')) return; removeEntity('account', id); closeModal(); render();
+}
+function openRegister(id) { runReport('gl', { acct: id, from: '', to: '' }); }
+
+/* ---------- banking: import, review, rules, reconcile ---------- */
+function pageBanking() {
+  const banks = db.accounts.filter(a => isBankish(a) && a.active).sort(byNum);
+  if (!ui.bankAcct || !acct(ui.bankAcct)) ui.bankAcct = banks[0]?.id || '';
+  const A = ui.bankAcct; const feed = db.bankFeed.filter(x => x.accountId === A);
+  const counts = { review: 0, added: 0, excluded: 0 }; feed.forEach(x => counts[x.status === 'review' ? 'review' : x.status === 'excluded' ? 'excluded' : 'added']++);
+  const bal = natural(acct(A) || {}, balances(null, today())[A]);
+  let content = '';
+  if (ui.bankTab === 'connect') content = connectHtml();
+  else if (ui.bankTab === 'reconcile') content = reconcileHtml(A);
+  else if (ui.bankTab === 'rules') content = rulesHtml();
+  else {
+    const items = feed.filter(x => ui.bankTab === 'review' ? x.status === 'review' : ui.bankTab === 'excluded' ? x.status === 'excluded' : (x.status === 'added' || x.status === 'matched')).sort((a, b) => b.date.localeCompare(a.date));
+    content = ui.bankTab === 'review' ? reviewTable(items) : `<div class="tablewrap"><table><tr><th>Date</th><th>Description</th><th class="num">Amount</th><th></th></tr>${items.map(x => `<tr><td>${x.date}</td><td>${esc(x.desc)}</td><td class="num">${fmt(x.amount)}</td><td>${x.txnId ? `<button class="sm" onclick="openTxById('${x.txnId}')">View</button>` : ''}<button class="sm" onclick="undoFeed('${x.id}')">Undo</button></td></tr>`).join('') || '<tr><td colspan="4" class="muted">None</td></tr>'}</table></div>`;
+  }
+  return `<div class="filters"><div style="min-width:220px"><label>Bank / card account</label><select onchange="ui.bankAcct=this.value;render()">${banks.map(a => `<option value="${a.id}" ${a.id === A ? 'selected' : ''}>${esc(acctName(a))}</option>`).join('')}</select></div>
+    <div><label>Balance in books</label><div class="kpi"><div class="v" style="font-size:18px">${fmt(bal)}</div></div></div>
+    <div><label>&nbsp;</label><label class="btn primary" style="margin:0;color:var(--brand-ink)">⬆ Import statement (CSV / OFX / QFX)<input type="file" accept=".csv,.ofx,.qfx,.txt,text/csv" hidden onchange="importStatement(this.files[0]);this.value=''"></label></div></div>
+  <div class="tabs">${[['connect', '🔗 Bank connections'], ['review', `For review (${counts.review})`], ['added', `Categorized (${counts.added})`], ['excluded', `Excluded (${counts.excluded})`], ['rules', 'Rules'], ['reconcile', 'Reconcile']].map(([k, l]) => `<button class="${ui.bankTab === k ? 'on' : ''}" onclick="ui.bankTab='${k}';render()">${l}</button>`).join('')}</div>
+  ${content}
+  <p class="hint" style="margin-top:14px">Download a statement from your bank's website (most Canadian banks offer CSV, QFX or OFX "Quicken/Money" formats) and import it here. Duplicates are skipped automatically. Nothing is sent anywhere — the file is read on this device only.</p>`;
+}
+pageBanking.after = () => { if (ui.bankTab === 'connect') loadConnections(); };
+function reviewTable(items) {
+  if (!items.length) return `<div class="card muted">Nothing to review. <a href="javascript:void(0)" onclick="ui.bankTab='connect';render()">Connect your bank</a> or import a statement to get started.</div>`;
+  return `<div class="row" style="margin-bottom:8px"><button onclick="bulkAccept()">Add all with a category</button><span class="hint">Pick a category (or let Rules fill it), then Add. "Match" links to a transaction you already entered.</span></div>
+  <div class="tablewrap"><table><thead><tr><th>Date</th><th>Description</th><th class="num">Spent</th><th class="num">Received</th><th>Payee</th><th>Category</th><th>Project</th><th></th></tr></thead><tbody>
+  ${items.map(x => { const sug = suggestFor(x); const m = findMatch(x);
+    return `<tr data-feed="${x.id}"><td>${x.date}</td><td>${esc(x.desc)}${x.memo ? `<div class="hint">${esc(x.memo)}</div>` : ''}</td><td class="num">${x.amount < 0 ? fmt(-x.amount) : ''}</td><td class="num">${x.amount > 0 ? fmt(x.amount) : ''}</td>
+    <td style="min-width:140px"><select data-k="party" onchange="handleQuickNew(this,'${x.amount < 0 ? 'vendor' : 'customer'}')">${partyOptions(x.amount < 0 ? 'vendor' : 'customer', sug.partyId)}</select></td>
+    <td style="min-width:180px"><select data-k="acct">${acctOptions(sug.accountId, a => a.id !== x.accountId, '— category —')}</select></td>
+    <td style="min-width:120px"><select data-k="proj" data-proj onchange="handleQuickNew(this,'project')">${projOptions(sug.projectId)}</select></td>
+    <td style="white-space:nowrap"><button class="sm primary" onclick="acceptFeed('${x.id}')">Add</button> <button class="sm" onclick="acceptFeed('${x.id}',true)" title="Open full form to split, add tax, receipts">Edit…</button>
+    ${m ? ` <button class="sm" onclick="matchFeed('${x.id}','${m.id}')" title="${esc(TT[m.type].label + ' ' + m.date)}">Match</button>` : ''} <button class="sm" onclick="setFeed('${x.id}','excluded')">Exclude</button></td></tr>`; }).join('')}
+  </tbody></table></div>`;
+}
+function suggestFor(x) {
+  const raw = x.desc + ' ' + (x.memo || ''); const d = (raw + ' ' + raw.replace(/[#*]?\d{3,}/g, ' ').replace(/\s+/g, ' ')).toLowerCase();
+  for (const r of db.bankRules) if (r.text && d.includes(r.text.toLowerCase()) && (!r.dir || (r.dir === 'out') === (x.amount < 0))) return r;
+  return {};
+}
+function findMatch(x) {
+  return db.txns.find(t => live(t) && Math.abs(daysBetween(t.date, x.date)) <= 10 && !db.bankFeed.some(b => b.txnId === t.id) &&
+    postings(t).some(p => p.accountId === x.accountId && r2(p.debit - p.credit) === r2(x.amount)));
+}
+function setFeed(id, status) { const it = db.bankFeed.find(x => x.id === id); it.status = status; save(); render(); }
+function undoFeed(id) { const it = db.bankFeed.find(x => x.id === id); if (it.txnId && it.status === 'added' && confirm('Also delete the transaction that was created from this bank line?')) removeEntity('txn', it.txnId); it.status = 'review'; it.txnId = ''; save(); render(); }
+function matchFeed(id, txnId) { const it = db.bankFeed.find(x => x.id === id); it.status = 'matched'; it.txnId = txnId; save(); render(); toast('Matched'); }
+function feedToTx(x, accountId, partyId, projectId) {
+  const out = x.amount < 0, amt = r2(Math.abs(x.amount)), a = acct(accountId);
+  if (a && (a.type === 'Asset' || a.type === 'Liability' || a.type === 'Equity') && !PL_TYPES.has(a.type)) // transfer between balance-sheet accounts (e.g. card payment, owner draw)
+    return { id: uid(), type: 'journal', date: x.date, num: '', memo: x.desc, custom: {}, created: nowISO(), updated: nowISO(), projectId,
+      lines: [{ accountId: out ? accountId : x.accountId, desc: x.desc, debit: amt, credit: 0, projectId }, { accountId: out ? x.accountId : accountId, desc: x.desc, debit: 0, credit: amt, projectId }] };
+  return { id: uid(), type: out ? 'expense' : 'deposit', date: x.date, num: '', partyId: partyId || '', bankAccountId: x.accountId, memo: x.memo || '', projectId, custom: {}, created: nowISO(), updated: nowISO(),
+    lines: [{ accountId, desc: x.desc, amount: amt, projectId }], tax: 0 };
+}
+function acceptFeed(id, edit) {
+  const tr = document.querySelector(`tr[data-feed="${id}"]`); const x = db.bankFeed.find(f => f.id === id);
+  const accountId = tr.querySelector('[data-k=acct]').value, partyId = tr.querySelector('[data-k=party]').value.replace('__new', ''), projectId = tr.querySelector('[data-k=proj]').value.replace('__new', '');
+  if (!accountId && !edit) return alert('Choose a category first (or use Edit…).');
+  const t = feedToTx(x, accountId || (x.amount < 0 ? db.accounts.find(a => a.name === 'Uncategorized Expense')?.id : db.accounts.find(a => a.name === 'Uncategorized Income')?.id), partyId, projectId);
+  rememberRule(x, accountId, partyId, projectId);
+  if (edit) { delete t.created; openTx(t.type, null, t); ui.pendingFeed = id; return; }
+  upsert('txn', t); x.status = 'added'; x.txnId = t.id; save(); render();
+}
+function rememberRule(x, accountId, partyId, projectId) {
+  if (!accountId) return; const key = cleanDesc(x.desc); if (!key) return;
+  const r = db.bankRules.find(r => r.text.toLowerCase() === key.toLowerCase());
+  if (r) { if (r.auto) { r.accountId = accountId; r.partyId = partyId; r.projectId = projectId; } }
+  else db.bankRules.push({ id: uid(), text: key, dir: x.amount < 0 ? 'out' : 'in', accountId, partyId, projectId, auto: true });
+}
+function cleanDesc(s) { return (s || '').replace(/[#*]?\d{3,}/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, 3).join(' '); }
+function bulkAccept() {
+  let n = 0; $$('tr[data-feed]').forEach(tr => { if (tr.querySelector('[data-k=acct]').value) { const id = tr.dataset.feed; const x = db.bankFeed.find(f => f.id === id);
+    const t = feedToTx(x, tr.querySelector('[data-k=acct]').value, tr.querySelector('[data-k=party]').value.replace('__new', ''), tr.querySelector('[data-k=proj]').value.replace('__new', ''));
+    upsert('txn', t); x.status = 'added'; x.txnId = t.id; n++; } });
+  save(); render(); toast(n + ' transactions added');
+}
+function rulesHtml() {
+  return `<p class="hint">Rules auto-fill the category when a bank description contains the text. They're learned when you categorize, and you can edit them here.</p>
+  <div class="tablewrap"><table><tr><th>Description contains</th><th>Direction</th><th>Category</th><th>Payee</th><th>Project</th><th></th></tr>
+  ${db.bankRules.map(r => `<tr data-rule="${r.id}"><td><input data-k="text" value="${esc(r.text)}"></td><td><select data-k="dir"><option value="">Either</option><option value="out" ${r.dir === 'out' ? 'selected' : ''}>Money out</option><option value="in" ${r.dir === 'in' ? 'selected' : ''}>Money in</option></select></td>
+  <td><select data-k="accountId">${acctOptions(r.accountId)}</select></td><td><select data-k="partyId">${partyOptions(r.dir === 'in' ? 'customer' : 'vendor', r.partyId, false)}</select></td><td><select data-k="projectId">${projOptions(r.projectId, false)}</select></td><td><button class="sm danger" onclick="db.bankRules=db.bankRules.filter(x=>x.id!=='${r.id}');save();render()">✕</button></td></tr>`).join('')}
+  </table></div><div class="row" style="margin-top:8px"><button onclick="db.bankRules.push({id:uid(),text:'',dir:'out',accountId:'',auto:false});render()">+ Add rule</button><button class="primary" onclick="saveRules()">Save rules</button></div>`;
+}
+function saveRules() { $$('tr[data-rule]').forEach(tr => { const r = db.bankRules.find(x => x.id === tr.dataset.rule); tr.querySelectorAll('[data-k]').forEach(i => r[i.dataset.k] = i.value); r.auto = false; }); db.bankRules = db.bankRules.filter(r => r.text); save(); render(); toast('Rules saved'); }
+
+/* ---------- live bank connections (via the local OwnBooks Bank Bridge) ---------- */
+const BRIDGE_DEFAULT = 'http://127.0.0.1:8765';
+const onBridgeOrigin = () => /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(location.origin);
+const bridgeUrl = () => db.meta.bridgeUrl || (onBridgeOrigin() ? location.origin : BRIDGE_DEFAULT);
+function bridgeKey() { try { return localStorage.getItem('ownbooks-bridge-key') || ''; } catch (e) { return ''; } }
+function setBridgeKey(k) { try { localStorage.setItem('ownbooks-bridge-key', (k || '').trim()); } catch (e) { } }
+async function bridge(p, body) {
+  let r; try { r = await fetch(bridgeUrl() + p, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'X-OwnBooks-Key': bridgeKey() }, body: body ? JSON.stringify(body) : undefined }); }
+  catch (e) { const er = new Error('Bank Bridge is not running on this computer.'); er.down = true; throw er; }
+  const j = await r.json().catch(() => ({ error: 'Unexpected response from bridge' }));
+  if (!r.ok || j.error) { const er = new Error(j.error || 'Bridge error ' + r.status); er.status = r.status; er.code = j.code; throw er; }
+  return j;
+}
+async function bridgePair() { if (!onBridgeOrigin()) return false; try { const r = await fetch(location.origin + '/pair'); if (r.ok) { setBridgeKey((await r.json()).key); return true; } } catch (e) { } return false; }
+const links = () => db.meta.bankLinks || (db.meta.bankLinks = { items: {}, accounts: {}, autoSync: false });
+let connCache = { status: null, accounts: {} };
+
+function connectHtml() { return `<div id="connbox"><div class="card muted">Checking for the Bank Bridge on this computer…</div></div>`; }
+async function loadConnections() {
+  const box = $('#connbox'); if (!box) return;
+  let st; try { if (!bridgeKey()) await bridgePair(); st = await bridge('/status'); }
+  catch (e) {
+    if (e.status === 401 && await bridgePair()) return loadConnections();
+    box.innerHTML = bridgeHelpHtml(e); return;
+  }
+  connCache.status = st; const L = links();
+  if (activeJob) setTimeout(pollJob, 50);
+  for (const it of st.items) if (!connCache.accounts[it.id]) { try { connCache.accounts[it.id] = (await bridge('/accounts', { itemId: it.id })).accounts; } catch (e) { connCache.accounts[it.id] = { error: e.message, code: e.code }; } }
+  const unmapped = db.bankFeed.filter(f => !f.accountId).length;
+  const bankAccts = db.accounts.filter(a => isBankish(a) && a.active);
+  box.innerHTML = bankLoginHtml(st) + `
+  <div class="section">Other ways to connect</div>
+  <div class="card" style="margin-bottom:12px"><div class="row"><span class="pill paid">● Bridge connected</span><span class="hint">v${esc(st.version)} · keys stored privately on this computer in ${esc(st.dataFile)}</span><span class="sp" style="flex:1"></span>
+    <label style="color:var(--ink);display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" style="width:auto" ${L.autoSync ? 'checked' : ''} onchange="links().autoSync=this.checked;save()"> Sync automatically when I open OwnBooks</label>
+    <button class="primary" onclick="syncAll()">⟳ Sync all now</button></div>
+    ${unmapped ? `<p class="hint" style="color:var(--warn)">${unmapped} downloaded transactions are waiting because their bank account isn't linked to an OwnBooks account yet — choose one below.</p>` : ''}</div>
+  ${st.items.map(it => { const accs = connCache.accounts[it.id]; const I = L.items[it.id] || {};
+    return `<div class="card" style="margin-bottom:12px"><div class="row"><strong>${esc(it.institution)}</strong><span class="pill">${it.provider === 'plaid' ? 'Plaid' : 'SimpleFIN'}</span><span class="hint">Last sync: ${esc(I.lastSync ? I.lastSync.slice(0, 16).replace('T', ' ') : 'never')}</span><span style="flex:1"></span>
+      <button class="sm" onclick="syncItem('${it.id}').then(r=>{toast(r);render()}).catch(e=>alert(e.message))">⟳ Sync</button>${it.provider === 'plaid' ? `<button class="sm" onclick="connectPlaid('${it.id}')">Re-login</button>` : ''}<button class="sm danger" onclick="removeConnection('${it.id}')">Disconnect</button></div>
+    ${accs && accs.error ? `<p class="err">${esc(accs.error)}${accs.code === 'ITEM_LOGIN_REQUIRED' ? ' — click Re-login.' : ''}</p>` : `<div class="tablewrap" style="margin-top:8px"><table><tr><th>Bank account</th><th class="num">Bank balance</th><th>Record in OwnBooks as</th><th class="num">Books balance</th></tr>
+    ${(accs || []).map(a => { const m = L.accounts[a.id] || {}; const bk = m.accountId ? natural(acct(m.accountId) || {}, balances(null, today())[m.accountId]) : null;
+      return `<tr><td>${esc(a.name)}${a.mask ? ' ••' + esc(a.mask) : ''}<div class="hint">${esc([a.institution, a.subtype || a.type].filter(Boolean).join(' · '))}</div></td><td class="num">${a.balance != null ? fmt(a.balance) : ''}</td>
+      <td style="min-width:220px"><select onchange="mapBankAccount('${it.id}','${a.id}',this.value,${esc(JSON.stringify(JSON.stringify(a)))})"><option value="">— don't import —</option><option value="__new">+ Create a new account for it</option>${bankAccts.map(b => `<option value="${b.id}" ${b.id === m.accountId ? 'selected' : ''}>${esc(acctName(b))}</option>`).join('')}</select></td>
+      <td class="num">${bk != null ? fmt(bk) + (a.balance != null && Math.abs(bk - a.balance) > 0.009 ? `<div class="hint" style="color:var(--warn)">differs by ${fmt(a.balance - bk)}</div>` : '') : ''}</td></tr>`; }).join('')}</table></div>`}</div>`; }).join('')}
+  <div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">
+    <div class="card"><div class="section" style="margin-top:0">Connect with Plaid <div class="hint" style="font-weight:400">RBC, TD, Scotiabank, BMO, CIBC, Desjardins, Tangerine, credit unions, US banks…</div></div>
+      ${st.plaidConfigured ? `<p class="hint">Plaid keys saved (${esc(st.plaidEnv)}). <a href="javascript:void(0)" onclick="$('#plaidcfg').hidden=!$('#plaidcfg').hidden">change</a></p>` : '<p class="hint">One-time setup: create a free account at dashboard.plaid.com, copy your client ID and secret (Developers → Keys), paste them here. They are saved only on this computer.</p>'}
+      <form id="plaidcfg" ${st.plaidConfigured ? 'hidden' : ''} onsubmit="return false"><div class="grid"><div><label>Client ID</label><input name="clientId" autocomplete="off"></div><div><label>Secret</label><input name="secret" type="password" autocomplete="off"></div>
+        <div><label>Environment</label><select name="env"><option value="sandbox" ${st.plaidEnv === 'sandbox' ? 'selected' : ''}>Sandbox (test banks)</option><option value="production" ${st.plaidEnv === 'production' ? 'selected' : ''}>Production (real banks)</option></select></div>
+        <div><label>OAuth redirect URI (optional)</label><input name="redirectUri" value="${esc(st.redirectUri)}" placeholder="only if Plaid asks for one"></div></div>
+        <button class="sm" style="margin-top:8px" onclick="savePlaidKeys()">Save keys on this computer</button></form>
+      <button class="primary" style="margin-top:10px" ${st.plaidConfigured ? '' : 'disabled'} onclick="connectPlaid()">🔗 Connect a bank account</button>
+      ${!onBridgeOrigin() ? `<p class="hint" style="color:var(--warn)">Plaid's sign-in window needs OwnBooks opened at <a href="${esc(bridgeUrl())}" target="_blank">${esc(bridgeUrl())}</a>. Note: that address keeps its own copy of your books — use Settings → Backup/Restore once to move them there.</p>` : ''}</div>
+    <div class="card"><div class="section" style="margin-top:0">Connect with SimpleFIN <div class="hint" style="font-weight:400">Low-cost alternative · mostly US banks</div></div>
+      <p class="hint">Get a setup token at beta-bridge.simplefin.org (link your bank there), then paste the token here.</p>
+      <div class="grid"><div><label>Setup token</label><input id="sfintoken" autocomplete="off"></div><div><label>Label</label><input id="sfinname" placeholder="e.g. Chase"></div></div>
+      <button class="primary" style="margin-top:10px" onclick="claimSimplefin()">🔗 Connect</button></div>
+  </div>
+  <p class="hint">How it works: your bank login happens inside Plaid's/SimpleFIN's own secure window — OwnBooks never sees your bank password. The Bridge on this computer holds the access keys, downloads transactions, and OwnBooks saves them only on this device. New transactions land in <b>For review</b> so you approve every one.</p>`;
+}
+function bridgeHelpHtml(e) {
+  return `<div class="card"><div class="section" style="margin-top:0">Connect your bank — one-time setup</div>
+  ${e.status === 401 ? `<p class="err">The bridge is running but this page needs its key.</p>` : `<p>${esc(e.message)}</p>`}
+  <ol><li>Install <b>Node.js</b> (free, nodejs.org — choose "LTS").</li>
+  <li>In the OwnBooks folder, open <b>bank-bridge</b> and double-click <b>Start Bank Bridge</b> (Windows: <code>start-bank-bridge.bat</code>, Mac: <code>start-bank-bridge.command</code>, Linux: <code>start-bank-bridge.sh</code>).</li>
+  <li>Open <a href="${BRIDGE_DEFAULT}" target="_blank">${BRIDGE_DEFAULT}</a> — that's OwnBooks served by the bridge, ready to connect banks. (Or paste the key shown in the bridge window below to use this copy.)</li></ol>
+  <div class="grid"><div><label>Bridge key</label><input id="bkey" value="${esc(bridgeKey())}" autocomplete="off"></div><div><label>Bridge address</label><input id="burl" value="${esc(bridgeUrl())}"></div></div>
+  <div class="row" style="margin-top:8px"><button class="primary" onclick="setBridgeKey($('#bkey').value);saveBridgeUrl($('#burl').value);loadConnections()">Connect to bridge</button><button onclick="loadConnections()">Retry</button></div>
+  <p class="hint">Phones: link banks on your computer, then move data with Settings → Backup/Restore — or keep using statement import on the phone.</p></div>`;
+}
+function saveBridgeUrl(u) { u = (u || '').trim().replace(/\/$/, ''); const m = clone(db.meta); m.bridgeUrl = u === BRIDGE_DEFAULT || (onBridgeOrigin() && u === location.origin) ? '' : u; db.meta = m; save(); }
+async function savePlaidKeys() { const E = $('#plaidcfg').elements; try { await bridge('/config/plaid', { clientId: E.clientId.value, secret: E.secret.value, env: E.env.value, redirectUri: E.redirectUri.value }); toast('Plaid keys saved on this computer'); loadConnections(); } catch (e) { alert(e.message); } }
+function loadPlaidScript() {
+  return window.Plaid ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js'; s.onload = res; s.onerror = () => rej(new Error('Could not load Plaid (internet connection needed).')); document.head.appendChild(s); });
+}
+async function connectPlaid(updateItemId, oauthReturn) {
+  try {
+    let token; if (oauthReturn) token = sessionStorage.getItem('ownbooks-plaid-token'); else { token = (await bridge('/plaid/link-token', { itemId: updateItemId })).link_token; sessionStorage.setItem('ownbooks-plaid-token', token); sessionStorage.setItem('ownbooks-plaid-update', updateItemId || ''); }
+    if (oauthReturn) updateItemId = sessionStorage.getItem('ownbooks-plaid-update') || '';
+    await loadPlaidScript();
+    const h = window.Plaid.create({ token, receivedRedirectUri: oauthReturn ? location.href : undefined,
+      onSuccess: async (publicToken, md) => {
+        try {
+          if (!updateItemId) { const r = await bridge('/plaid/exchange', { public_token: publicToken, institution: md.institution?.name }); connCache.accounts[r.itemId] = r.accounts; toast('Connected ' + (md.institution?.name || 'bank') + ' — now choose where each account is recorded.'); }
+          else { delete connCache.accounts[updateItemId]; toast('Bank re-connected'); }
+          if (oauthReturn) history.replaceState(null, '', location.pathname + '#banking'); ui.bankTab = 'connect'; location.hash = 'banking'; render();
+        } catch (e) { alert(e.message); }
+      },
+      onExit: err => { if (err) alert(err.display_message || err.error_message || 'Bank connection was not completed.'); if (oauthReturn) history.replaceState(null, '', location.pathname + '#banking'); } });
+    h.open();
+  } catch (e) { alert(e.message); }
+}
+async function claimSimplefin() { try { const r = await bridge('/simplefin/claim', { setupToken: $('#sfintoken').value, institution: $('#sfinname').value.trim() || 'SimpleFIN' }); toast('Connected — now choose where each account is recorded.'); delete connCache.accounts[r.itemId]; loadConnections(); } catch (e) { alert(e.message); } }
+async function removeConnection(id) {
+  if (!confirm('Disconnect this bank? Transactions already downloaded stay in your books.')) return;
+  try { await bridge('/remove', { itemId: id }); } catch (e) { if (!confirm('Bridge says: ' + e.message + '\nRemove the link from OwnBooks anyway?')) return; }
+  const L = links(); delete L.items[id]; for (const k in L.accounts) if (L.accounts[k].itemId === id) delete L.accounts[k]; delete connCache.accounts[id]; save(); loadConnections();
+}
+function mapBankAccount(itemId, extId, value, aJSON) {
+  const a = JSON.parse(aJSON); const L = links(); let accountId = value;
+  if (value === '__new') {
+    const card = /credit|visa|master ?card|amex|american express|\bcard\b/i.test((a.type || '') + ' ' + (a.subtype || '') + ' ' + a.name);
+    const inst = (connCache.status?.items.find(i => i.id === itemId) || {}).institution || '';
+    const nums = db.accounts.filter(x => x.type === (card ? 'Liability' : 'Asset')).map(x => parseInt(x.number, 10)).filter(n => !isNaN(n) && n < (card ? 2200 : 1200) && n >= (card ? 2100 : 1000));
+    const na = { id: uid(), number: String(nums.length ? Math.max(...nums) + 1 : card ? 2110 : 1020), name: `${inst ? inst + ' ' : ''}${a.name}${a.mask ? ' ••' + a.mask : ''}`.trim(), type: card ? 'Liability' : 'Asset', subtype: card ? 'Credit Card' : 'Bank', active: true, desc: 'Linked bank account', taxLine: '' };
+    upsert('account', na); accountId = na.id;
+  }
+  if (accountId) L.accounts[extId] = { itemId, accountId, name: a.name, mask: a.mask }; else delete L.accounts[extId];
+  let moved = 0; db.bankFeed.forEach(f => { if (f.extAccountId === extId && f.status === 'review') { f.accountId = accountId || ''; moved++; } });
+  if (accountId) autoMatch(accountId);
+  save(); toast(accountId ? `Linked${moved ? ' · ' + moved + ' waiting transactions moved to review' : ''}` : 'Unlinked'); loadConnections();
+}
+async function syncItem(itemId) {
+  const L = links(); const I = L.items[itemId] || (L.items[itemId] = {});
+  const start = I.lastSync ? addDays(I.lastSync.slice(0, 10), -14) : addDays(today(), -180);
+  const r = await bridge('/sync', { itemId, cursor: I.cursor || '', startDate: start });
+  let added = 0, updated = 0, removed = 0;
+  for (const x of [...r.added, ...r.modified]) {
+    if (x.pending || !x.date || !x.amount) continue;
+    const key = x.provider + ':' + x.id; const map = L.accounts[x.accountId]; const ex = db.bankFeed.find(f => f.key === key);
+    if (ex) { if (ex.status === 'review') { Object.assign(ex, { date: x.date, desc: x.desc, memo: x.memo, amount: r2(x.amount) }); updated++; } continue; }
+    db.bankFeed.push({ id: uid(), accountId: map?.accountId || '', extAccountId: x.accountId, key, date: x.date, desc: x.desc, memo: x.memo, amount: r2(x.amount), status: 'review', source: x.provider, imported: nowISO() }); added++;
+  }
+  for (const key of r.removed || []) { const i = db.bankFeed.findIndex(f => f.key === key && f.status === 'review'); if (i >= 0) { db.bankFeed.splice(i, 1); removed++; } }
+  if (r.cursor) I.cursor = r.cursor; I.lastSync = nowISO();
+  new Set(Object.values(L.accounts).filter(m => m.itemId === itemId).map(m => m.accountId)).forEach(autoMatch);
+  save();
+  return `${(connCache.status?.items.find(i => i.id === itemId) || {}).institution || 'Bank'}: ${added} new${updated ? ', ' + updated + ' updated' : ''}${removed ? ', ' + removed + ' removed' : ''}`;
+}
+async function syncAll(silent) {
+  let st; try { if (!bridgeKey()) await bridgePair(); st = await bridge('/status'); } catch (e) { if (!silent) alert(e.message); return; }
+  connCache.status = st; const msgs = [];
+  for (const it of st.items) { try { msgs.push(await syncItem(it.id)); } catch (e) { msgs.push(`${it.institution}: ${e.message}`); } }
+  toast(msgs.join(' · ') || 'No banks connected'); if (!silent || location.hash.startsWith('#banking') || location.hash === '' || location.hash === '#dashboard') render();
+}
+function autoMatch(A) {
+  db.bankFeed.filter(x => x.accountId === A && x.status === 'review').forEach(x => { const m = findMatch(x); if (m) { x.status = 'matched'; x.txnId = m.id; } });
+}
+
+/* ---------- QuickBooks-style "sign in to your bank" (username & password, via the Bridge on this computer) ---------- */
+const BANK_PRESETS = [
+  ['RBC Royal Bank', 'https://secure.royalbank.com/statics/login-service-ui/index#/full/signin?LANGUAGE=ENGLISH'],
+  ['TD Canada Trust (EasyWeb)', 'https://authentication.td.com/uap-ui/?consumer=easyweb&locale=en_CA'],
+  ['Scotiabank', 'https://auth.scotiaonline.scotiabank.com/online'],
+  ['BMO Bank of Montreal', 'https://www1.bmo.com/banking/digital/login'],
+  ['CIBC', 'https://www.cibconline.cibc.com/ebm-resources/online-banking/client/index.html#/auth/signon'],
+  ['National Bank', 'https://app.bnc.ca/'],
+  ['Desjardins', 'https://accweb.mouv.desjardins.com/'],
+  ['Tangerine', 'https://www.tangerine.ca/app/#/login/login-id'],
+  ['Simplii Financial', 'https://online.simplii.com/ebm-resources/public/client/web/index.html#/signon'],
+  ['EQ Bank', 'https://secure.eqbank.ca/login'],
+  ['ATB Financial', 'https://www.atbonline.com/'],
+  ['American Express Canada', 'https://www.americanexpress.com/en-ca/account/login'],
+  ['Other bank or credit union…', '']
+];
+const scrapeCfg = id => { const L = links(); L.scrape = L.scrape || {}; return L.scrape[id] || (L.scrape[id] = { accountId: '', acctMap: {}, csvMap: null }); };
+let activeJob = null;
+function bankLoginHtml(st) {
+  const BL = st.bankLogin || {}; const V = st.vault || {};
+  let inner;
+  if (!BL.ok) inner = `<p class="err">${esc(BL.error || 'Bank sign-in helper unavailable.')}</p>`;
+  else if (!V.unlocked) inner = `<p>${V.exists ? 'Your saved bank logins are locked.' : 'First, choose an <b>OwnBooks master password</b>. It encrypts the bank usernames and passwords you save on this computer. It is never stored — if you forget it, you just re-enter your bank logins.'}</p>
+    <div class="row"><input type="password" id="vaultpw" placeholder="${V.exists ? 'Master password' : 'New master password (8+ characters)'}" style="max-width:320px" onkeydown="if(event.key==='Enter')unlockVault()"><button class="primary" onclick="unlockVault()">${V.exists ? 'Unlock' : 'Create & unlock'}</button>
+    ${V.exists ? `<a href="javascript:void(0)" class="hint" onclick="resetVault()">Forgot it?</a>` : ''}</div>`;
+  else {
+    const banks = db.accounts.filter(a => isBankish(a) && a.active);
+    inner = (st.profiles.length ? `<div class="tablewrap" style="margin-bottom:10px"><table><tr><th>Bank</th><th>Username</th><th>Download into</th><th>Status</th><th></th></tr>
+    ${st.profiles.map(p => { const S = scrapeCfg(p.id); return `<tr><td><b>${esc(p.name)}</b><div class="hint">${esc(new URL(p.loginUrl).hostname)}</div></td><td>${esc(p.userHint)}</td>
+      <td style="min-width:190px"><select onchange="scrapeCfg('${p.id}').accountId=this.value;save()"><option value="">Ask me (or by account # in file)</option>${banks.map(b => `<option value="${b.id}" ${b.id === S.accountId ? 'selected' : ''}>${esc(acctName(b))}</option>`).join('')}</select></td>
+      <td><span class="hint">${p.steps ? `✓ Knows the way to your download (${p.steps} steps)` : 'First sync: you show it where Download is'}${p.lastResult ? '<br>Last: ' + esc(p.lastResult) : ''}</span></td>
+      <td style="white-space:nowrap"><button class="sm primary" onclick="runBankLogin('${p.id}')">⟳ Sign in & download</button> <details class="menu" style="display:inline-block"><summary class="btn sm">⋯</summary><div class="items">
+        <a onclick="runBankLogin('${p.id}',true)">Teach the download steps again</a><a onclick="editBankLogin('${p.id}')">Change username / password</a>
+        <a onclick="bankLoginAction('/profiles/forget-steps','${p.id}')">Forget learned steps</a><a onclick="if(confirm('Remove this saved bank login from this computer?'))bankLoginAction('/profiles/delete','${p.id}')">Remove</a></div></details></td></tr>`; }).join('')}</table></div>` : '')
+      + `<details ${st.profiles.length ? '' : 'open'} id="addlogin"><summary class="btn">+ Add a bank</summary>${bankLoginForm({})}</details>
+      <div class="row" style="margin-top:8px"><button class="sm" onclick="bridge('/vault/lock',{}).then(loadConnections)">🔒 Lock saved logins</button><span class="hint">Locks automatically after 30 minutes.</span></div>`;
+  }
+  return `<div class="card" style="margin-bottom:12px"><div class="section" style="margin-top:0">🏦 Sign in to your bank <span class="hint" style="font-weight:400">— with your online-banking username & password, like QuickBooks</span></div>
+    ${inner}<div id="jobbox"></div>
+    <p class="hint">How it works: OwnBooks opens your bank's real website in a separate browser window on this computer and signs in for you. If the bank sends a security code, type it in that window. The first time, you click your way to "Download transactions" once — OwnBooks remembers those clicks (never what you type) and does it automatically from then on. Your password is stored encrypted on this computer only and is never sent anywhere except your bank's own sign-in page.</p></div>`;
+}
+function bankLoginForm(p) {
+  return `<form id="blform" onsubmit="return false" style="margin-top:10px"><input type="hidden" name="id" value="${esc(p.id || '')}"><div class="grid">
+    <div><label>Bank</label><select name="preset" onchange="const v=BANK_PRESETS[this.value];this.form.name.value=v[1]?v[0]:'';this.form.loginUrl.value=v[1];">${BANK_PRESETS.map((b, i) => `<option value="${i}" ${p.name === b[0] ? 'selected' : ''}>${esc(b[0])}</option>`).join('')}</select></div>
+    <div><label>Name</label><input name="name" value="${esc(p.name || BANK_PRESETS[0][0])}"></div>
+    <div style="grid-column:span 2"><label>Sign-in page address</label><input name="loginUrl" value="${esc(p.loginUrl || BANK_PRESETS[0][1])}"></div>
+    <div><label>Username / card number</label><input name="username" autocomplete="off" placeholder="${p.id ? 'unchanged — type to replace' : ''}"></div>
+    <div><label>Password</label><input name="password" type="password" autocomplete="new-password" placeholder="${p.id ? 'unchanged — type to replace' : ''}"></div>
+    <div><label>&nbsp;</label><label style="color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" name="headless" style="width:auto" ${p.headless ? 'checked' : ''}> Run hidden once it's learned</label></div></div>
+    <p class="hint">If the address doesn't open your bank's sign-in boxes, open your bank in your normal browser, go to its sign-in page and copy the address from the address bar.</p>
+    <button class="primary" onclick="saveBankLogin()">${p.id ? 'Save changes' : 'Save & connect'}</button></form>`;
+}
+async function unlockVault() { try { await bridge('/vault/unlock', { passphrase: $('#vaultpw').value }); loadConnections(); } catch (e) { alert(e.message); } }
+async function resetVault() { if (prompt('This erases the saved bank usernames/passwords (not your books). Type RESET to continue.') !== 'RESET') return; await bridge('/vault/reset', {}); loadConnections(); }
+async function bankLoginAction(path, id) { try { await bridge(path, { id }); loadConnections(); } catch (e) { alert(e.message); } }
+function editBankLogin(id) { const p = connCache.status.profiles.find(x => x.id === id); const d = $('#addlogin'); d.open = true; d.innerHTML = `<summary class="btn">Edit ${esc(p.name)}</summary>` + bankLoginForm(p); d.scrollIntoView({ behavior: 'smooth' }); }
+async function saveBankLogin() {
+  const E = $('#blform').elements;
+  try {
+    const r = await bridge('/profiles/save', { id: E.id.value, name: E.name.value, loginUrl: E.loginUrl.value, username: E.username.value, password: E.password.value, headless: E.headless.checked });
+    E.password.value = ''; E.username.value = '';
+    const isNew = !E.id.value; await loadConnections(); if (isNew) runBankLogin(r.id);
+  } catch (e) { if (e.code === 'VAULT_LOCKED') loadConnections(); alert(e.message); }
+}
+async function runBankLogin(id, teach) {
+  try {
+    const j = await bridge('/bank-login/start', { id, teach: !!teach }); activeJob = { id: j.id, profileId: id, imported: 0 };
+    showJob(j); pollJob();
+  } catch (e) { if (e.code === 'VAULT_LOCKED') { loadConnections(); } alert(e.message); }
+}
+function showJob(j) {
+  const box = $('#jobbox'); const msg = `<b>${j.state === 'error' ? '⚠' : j.state === 'done' ? '✓' : '⏳'}</b> ${esc(j.message)}`;
+  if (box) box.innerHTML = `<div class="card" style="margin-top:10px;background:var(--brand-soft)"><div class="row"><span style="flex:1">${msg}</span>${['running', 'waiting'].includes(j.state) ? `<button class="sm" onclick="bridge('/bank-login/stop',{id:'${j.id}'})">Cancel</button>` : ''}</div></div>`;
+  toast(j.message);
+}
+async function pollJob() {
+  if (!activeJob) return; let j;
+  try { j = await bridge('/bank-login/job?id=' + encodeURIComponent(activeJob.id)); } catch (e) { toast(e.message); return; }
+  while (activeJob.imported < j.files.length) { const f = j.files[activeJob.imported++]; try { await importCaptured(activeJob.profileId, f); } catch (e) { alert('Could not read ' + f.name + ': ' + e.message); } }
+  showJob(j);
+  if (['running', 'waiting'].includes(j.state)) setTimeout(pollJob, 1500);
+  else { const done = activeJob; activeJob = null; if (done.imported) { toast(j.message + ' — see For review.'); } setTimeout(loadConnections, 800); }
+}
+function chooseAccount(question) {
+  return new Promise(resolve => {
+    const banks = db.accounts.filter(a => isBankish(a) && a.active);
+    openModal('Which account is this?', `<p>${esc(question)}</p><select id="chacct"><option value="__new_bank">+ New bank account</option><option value="__new_card">+ New credit card</option>${banks.map(b => `<option value="${b.id}">${esc(acctName(b))}</option>`).join('')}</select>`,
+      `<span class="sp"></span><button onclick="closeModal()">Skip</button><button class="primary" id="chgo">Use this account</button>`, () => resolve(''));
+    $('#chgo').onclick = () => { let v = $('#chacct').value;
+      if (v.startsWith('__new')) { const card = v === '__new_card'; const name = prompt('Name for the new account', question.replace(/^.*?"|".*$/g, '') || (card ? 'Credit card' : 'Bank account')); if (!name) return;
+        const na = { id: uid(), number: '', name, type: card ? 'Liability' : 'Asset', subtype: card ? 'Credit Card' : 'Bank', active: true, desc: 'Downloaded from bank', taxLine: '' }; upsert('account', na); v = na.id; }
+      modalClose = null; closeModal(); resolve(v); };
+  });
+}
+function splitOfxAccounts(text) {
+  const parts = text.split(/<(?:CC)?STMTRS>/i); if (parts.length < 2) return [{ acctId: '', label: 'this file', text }];
+  const tag = (b, t) => { const m = b.match(new RegExp('<' + t + '>([^<\\r\\n]*)', 'i')); return m ? m[1].trim() : ''; };
+  return parts.slice(1).map(b => { const id = tag(b, 'ACCTID'); return { acctId: id, label: `account ending ${id.slice(-4)}${tag(b, 'ACCTTYPE') ? ' (' + tag(b, 'ACCTTYPE').toLowerCase() + ')' : /<CCACCTFROM>/i.test(b) ? ' (credit card)' : ''}`, text: b }; });
+}
+async function importCaptured(pid, f) {
+  const S = scrapeCfg(pid); const bank = (connCache.status?.profiles || []).find(p => p.id === pid)?.name || 'your bank'; let added = 0, dup = 0;
+  if (/<OFX>|OFXHEADER|<STMTTRN>/i.test(f.text)) {
+    const blocks = splitOfxAccounts(f.text);
+    for (const b of blocks) {
+      let A = (b.acctId && S.acctMap[b.acctId]) || (blocks.length === 1 && !b.acctId ? S.accountId : '') || (blocks.length === 1 && S.accountId && !Object.keys(S.acctMap).length ? S.accountId : '');
+      if (!A) A = await chooseAccount(`${bank}: which OwnBooks account should "${b.label}" go into?`); if (!A) continue;
+      if (b.acctId) S.acctMap[b.acctId] = A; const r = addFeedRows(A, parseOFX(b.text)); added += r.added; dup += r.dup;
+    }
+  } else {
+    const A = S.accountId || await chooseAccount(`${bank}: which OwnBooks account is the file "${f.name}" for?`); if (!A) return;
+    const res = await csvMapping(f.text, S.csvMap); if (!res) return; S.csvMap = res.map; S.accountId = S.accountId || A;
+    const r = addFeedRows(A, res.rows); added += r.added; dup += r.dup;
+  }
+  save(); toast(`${bank}: ${added} new transaction(s) to review${dup ? `, ${dup} already had` : ''}`);
+}
+/* statement parsing */
+async function importStatement(file) {
+  if (!file) return; const text = await file.text(); const A = ui.bankAcct; if (!A) return alert('Create a bank account first (Chart of Accounts).');
+  const res = /<OFX>|OFXHEADER|<STMTTRN>/i.test(text) ? { rows: parseOFX(text) } : await csvMapping(text);
+  if (!res) return;
+  const { added, dup } = addFeedRows(A, res.rows);
+  save(); ui.bankTab = 'review'; render(); alert(`Imported ${added} new line(s)${dup ? `, skipped ${dup} duplicate(s)` : ''}.`);
+}
+function addFeedRows(A, rows) {
+  let added = 0, dup = 0;
+  for (const r of rows) {
+    if (!r.date || !r.amount) continue;
+    const key = r.fitid || `${r.date}|${r2(r.amount)}|${r.desc}`;
+    if (db.bankFeed.some(x => x.accountId === A && x.key === key)) { dup++; continue; }
+    // For credit cards, the account is a liability: a purchase increases it (posting = credit), shown as money out.
+    const it = { id: uid(), accountId: A, key, date: r.date, desc: r.desc || '', memo: r.memo || '', amount: r2(r.amount), status: 'review', imported: nowISO() };
+    db.bankFeed.push(it); added++;
+  }
+  autoMatch(A); // auto-match obvious duplicates of transactions already entered
+  return { added, dup };
+}
+function ofxDate(s) { s = (s || '').trim(); return s.length >= 8 ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : ''; }
+function parseOFX(text) {
+  const out = []; const blocks = text.split(/<STMTTRN>/i).slice(1);
+  const tag = (b, t) => { const m = b.match(new RegExp('<' + t + '>([^<\\r\\n]*)', 'i')); return m ? m[1].trim() : ''; };
+  for (const b of blocks) out.push({ date: ofxDate(tag(b, 'DTPOSTED')), amount: parseFloat(tag(b, 'TRNAMT').replace(',', '.')), desc: tag(b, 'NAME') || tag(b, 'MEMO'), memo: tag(b, 'NAME') ? tag(b, 'MEMO') : '', fitid: tag(b, 'FITID') });
+  return out;
+}
+function parseCSV(text) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true; else if (c === ',') { row.push(f); f = ''; } else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; } else f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+function parseDateAny(s, order) {
+  s = (s || '').trim(); let m;
+  if ((m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/))) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  if ((m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/))) { let y = m[3].length === 2 ? '20' + m[3] : m[3]; const [d1, d2] = order === 'dmy' ? [m[2], m[1]] : [m[1], m[2]]; return `${y}-${pad(d1)}-${pad(d2)}`; }
+  if ((m = s.match(/^(\d{8})$/))) return ofxDate(s);
+  const d = new Date(s); return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+}
+const money = s => { s = String(s || '').trim(); if (!s) return 0; const neg = /^\(.*\)$/.test(s) || /-/.test(s); const n = parseFloat(s.replace(/[^0-9.]/g, '')); return isNaN(n) ? 0 : (neg ? -n : n); };
+function rowsFromMap(data, m) {
+  const g = n => +m[n];
+  return data.map(r => { const amount = g('amt') >= 0 ? money(r[g('amt')]) * +m.sign : (g('cr') >= 0 ? Math.abs(money(r[g('cr')])) : 0) - (g('dr') >= 0 ? Math.abs(money(r[g('dr')])) : 0);
+    return { date: parseDateAny(r[g('date')], m.order), desc: g('desc') >= 0 ? r[g('desc')] : '', memo: g('memo') >= 0 ? r[g('memo')] : '', amount }; });
+}
+function csvMapping(text, saved) {
+  return new Promise(resolve => {
+    const rows = parseCSV(text); if (!rows.length) { alert('Empty file'); return resolve(null); }
+    const hasHeader = rows[0].some(c => /date|desc|amount|debit|credit|withdraw|deposit/i.test(c));
+    const head = hasHeader ? rows[0] : rows[0].map((_, i) => 'Column ' + (i + 1)); const data = hasHeader ? rows.slice(1) : rows;
+    if (saved) return resolve({ rows: rowsFromMap(data, saved), map: saved });
+    const guess = re => head.findIndex(h => re.test(h));
+    const opt = (sel) => `<option value="-1">— none —</option>` + head.map((h, i) => `<option value="${i}" ${i === sel ? 'selected' : ''}>${esc(h)} (e.g. ${esc((data[0] || [])[i] || '')})</option>`).join('');
+    const gAmt = guess(/^amount|amount/i), gDr = guess(/debit|withdraw|out/i), gCr = guess(/credit|deposit|in$/i);
+    openModal('Map statement columns', `<form id="mapf"><p class="hint">${data.length} rows found. Tell OwnBooks which columns hold what.</p><div class="grid">
+      <div><label>Date</label><select name="date">${opt(Math.max(0, guess(/date/i)))}</select></div>
+      <div><label>Date format</label><select name="order"><option value="mdy">MM/DD/YYYY</option><option value="dmy">DD/MM/YYYY</option></select></div>
+      <div><label>Description</label><select name="desc">${opt(guess(/desc|payee|name|detail|narr/i))}</select></div>
+      <div><label>Memo (optional)</label><select name="memo">${opt(guess(/memo|note/i))}</select></div>
+      <div><label>Single amount column</label><select name="amt">${opt(gDr >= 0 && gCr >= 0 ? -1 : gAmt)}</select></div>
+      <div><label>…or Money out column</label><select name="dr">${opt(gAmt >= 0 ? -1 : gDr)}</select></div>
+      <div><label>…and Money in column</label><select name="cr">${opt(gAmt >= 0 ? -1 : gCr)}</select></div>
+      <div><label>Sign of single amount</label><select name="sign"><option value="1">Negative = money out (most banks)</option><option value="-1">Positive = money out (some credit cards)</option></select></div></div></form>`,
+      `<span class="sp"></span><button onclick="closeModal()">Cancel</button><button class="primary" id="mapgo">Import</button>`, () => resolve(null));
+    $('#mapgo').onclick = () => {
+      const E = $('#mapf').elements; const map = {}; for (const k of ['date', 'order', 'desc', 'memo', 'amt', 'dr', 'cr', 'sign']) map[k] = E[k].value;
+      modalClose = null; closeModal(); resolve({ rows: rowsFromMap(data, map), map });
+    };
+  });
+}
+/* reconciliation */
+function recItems(A, end) {
+  const a = acct(A), items = []; for (const t of db.txns) { if (!live(t) || t.date > end || (t.rec || {})[A]) continue; for (const p of postings(t)) if (p.accountId === A) items.push({ t, amt: DEBIT_NORMAL.has(a.type) ? p.debit - p.credit : p.credit - p.debit }); }
+  return items.sort((x, y) => x.t.date.localeCompare(y.t.date));
+}
+function recTickAll() { recItems(ui.rec.acct, ui.rec.end).forEach(i => ui.rec.ticked[i.t.id] = 1); render(); }
+function reconcileHtml(A) {
+  const a = acct(A); if (!a) return '';
+  const R = ui.rec || (ui.rec = { acct: A, end: today(), bal: '', ticked: {} }); if (R.acct !== A) Object.assign(R, { acct: A, ticked: {}, bal: '' });
+  const items = recItems(A, R.end);
+  let opening = 0; for (const t of db.txns) if (live(t) && (t.rec || {})[A]) for (const p of postings(t)) if (p.accountId === A) opening += DEBIT_NORMAL.has(a.type) ? p.debit - p.credit : p.credit - p.debit;
+  const cleared = r2(opening + items.filter(i => R.ticked[i.t.id]).reduce((s, i) => s + i.amt, 0)); const diff = r2((+R.bal || 0) - cleared);
+  return `<div class="filters"><div><label>Statement end date</label><input type="date" value="${R.end}" onchange="ui.rec.end=this.value;render()"></div><div><label>Statement ending balance</label><input type="number" step="0.01" class="num" value="${R.bal}" onchange="ui.rec.bal=this.value;render()"></div>
+  <div><label>Previously reconciled</label><div>${fmt(opening)}</div></div><div><label>Cleared balance</label><div>${fmt(cleared)}</div></div><div><label>Difference</label><div style="font-weight:700;color:${diff ? 'var(--danger)' : 'var(--ok)'}">${fmt(diff)}</div></div>
+  <div><label>&nbsp;</label><button class="primary" ${diff || R.bal === '' ? 'disabled' : ''} onclick="finishRec()">Finish reconciliation</button></div></div>
+  <div class="row" style="margin-bottom:8px"><button class="sm" onclick="recTickAll()">Tick all</button><button class="sm" onclick="ui.rec.ticked={};render()">Clear</button></div>
+  <div class="tablewrap"><table><tr><th></th><th>Date</th><th>Type</th><th>Name / memo</th><th class="num">Amount</th></tr>${items.map(i => `<tr><td><input type="checkbox" style="width:auto" ${R.ticked[i.t.id] ? 'checked' : ''} onchange="ui.rec.ticked['${i.t.id}']=this.checked?1:0;render()"></td><td>${i.t.date}</td><td>${TT[i.t.type].label}</td><td class="click" onclick="openTxById('${i.t.id}')">${esc(txName(i.t) || i.t.memo)}</td><td class="num">${fmt(i.amt)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No unreconciled transactions up to this date.</td></tr>'}</table></div>`;
+}
+function finishRec() { const R = ui.rec; for (const id in R.ticked) if (R.ticked[id]) { const t = clone(db.txns.find(x => x.id === id)); t.rec = Object.assign({}, t.rec, { [R.acct]: R.end }); upsert('txn', t, 'reconciled'); } ui.rec = null; render(); toast('Reconciled'); }
+
+/* ---------- reports ---------- */
+const REPORTS = {
+  pl: 'Profit & Loss', bs: 'Balance Sheet', tb: 'Trial Balance', gl: 'General Ledger', ar: 'A/R Aging (who owes you)', ap: 'A/P Aging (what you owe)',
+  bycust: 'Income by Client', byvend: 'Expenses by Vendor', byproj: 'Profit by Project', cash: 'Cash Flow (simple)'
+};
+function runReport(id, opts = {}) { ui.report = Object.assign({ id, from: fyStart(today()), to: today(), acct: '', project: '' }, opts); location.hash = 'reports'; render(); }
+function pageReports() {
+  const R = ui.report || (ui.report = { id: 'pl', from: fyStart(today()), to: today(), acct: '', project: '' });
+  const r = buildReport(R);
+  return `<div class="filters noprint"><div style="min-width:200px"><label>Report</label><select onchange="ui.report.id=this.value;render()">${Object.entries(REPORTS).map(([k, v]) => `<option value="${k}" ${R.id === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+    ${['bs', 'tb', 'ar', 'ap'].includes(R.id) ? '' : `<div><label>From</label><input type="date" value="${R.from}" onchange="ui.report.from=this.value;render()"></div>`}
+    <div><label>${['bs', 'tb', 'ar', 'ap'].includes(R.id) ? 'As of' : 'To'}</label><input type="date" value="${R.to}" onchange="ui.report.to=this.value;render()"></div>
+    <div><label>Period</label><select onchange="setPeriod(this.value)"><option value="">Custom…</option><option value="fy">This fiscal year</option><option value="lfy">Last fiscal year</option><option value="m">This month</option><option value="lm">Last month</option><option value="q">This quarter</option><option value="all">All dates</option></select></div>
+    ${R.id === 'gl' ? `<div style="min-width:200px"><label>Account</label><select onchange="ui.report.acct=this.value;render()">${acctOptions(R.acct, null, 'All accounts')}</select></div>` : ''}
+    ${['pl', 'gl'].includes(R.id) ? `<div><label>Project</label><select onchange="ui.report.project=this.value;render()">${projOptions(R.project, false).replace('— no project —', 'All')}</select></div>` : ''}
+    <div><label>&nbsp;</label><div class="row"><button onclick="download('${R.id}-report.csv',toCSV(reportRows(buildReport(ui.report))),'text/csv')">CSV</button><button onclick="print()">Print / PDF</button></div></div></div>
+  ${renderReport(r)}`;
+}
+function setPeriod(v) {
+  const t = today(), R = ui.report, y = +t.slice(0, 4), m = +t.slice(5, 7);
+  if (v === 'fy') { R.from = fyStart(t); R.to = t; } if (v === 'lfy') { const s = fyStart(t); R.from = fyStart(addDays(s, -1)); R.to = addDays(s, -1); }
+  if (v === 'm') { R.from = t.slice(0, 8) + '01'; R.to = t; } if (v === 'lm') { const e = addDays(t.slice(0, 8) + '01', -1); R.from = e.slice(0, 8) + '01'; R.to = e; }
+  if (v === 'q') { const qm = Math.floor((m - 1) / 3) * 3 + 1; R.from = `${y}-${pad(qm)}-01`; R.to = t; } if (v === 'all') { R.from = ''; R.to = t; }
+  render();
+}
+function reportRows(r) { return [r.cols.map(c => c.h), ...r.rows.map(x => x.c.map(v => typeof v === 'number' ? r2(v).toFixed(2) : v))]; }
+function renderReport(r) {
+  return `<div class="report card"><h2>${esc(db.meta.company)}</h2><h3>${esc(r.title)}</h3><p class="muted" style="margin-top:0">${esc(r.sub || '')}</p>
+  <div class="tablewrap" style="border:none"><table><thead><tr>${r.cols.map(c => `<th class="${c.num ? 'num' : ''}">${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
+  ${r.rows.map(x => `<tr class="${x.cls || ''} ${x.txn || x.acct ? 'click' : ''}" ${x.txn ? `onclick="openTxById('${x.txn}')"` : x.acct ? `onclick="runReport('gl',{acct:'${x.acct}',from:'${x.from ?? ui.report.from}',to:'${ui.report.to}',project:'${ui.report.project || ''}'})"` : ''}>${x.c.map((v, i) => `<td class="${r.cols[i].num ? 'num' : ''} ${i === 0 && x.ind ? 'ind' : ''}">${typeof v === 'number' ? fmt(v) : esc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${r.cols.length}" class="muted">No data for this period.</td></tr>`}
+  </tbody></table></div>${r.foot ? `<p class="hint">${r.foot}</p>` : ''}</div>`;
+}
+function buildReport(R) {
+  const per = `${R.from || 'Beginning'} to ${R.to}`;
+  switch (R.id) {
+    case 'pl': {
+      const b = balances(R.from, R.to, R.project); const rows = [];
+      const sec = (title, types) => { const list = db.accounts.filter(a => types.includes(a.type)).sort(byNum).map(a => [a, natural(a, b[a.id])]).filter(x => x[1]); let s = 0;
+        if (list.length) { rows.push({ c: [title, ''], cls: 'sec' }); list.forEach(([a, v]) => { s += v; rows.push({ c: [acctName(a), v], ind: 1, acct: a.id }); }); rows.push({ c: ['Total ' + title, s], cls: 'tot' }); } return r2(s); };
+      const inc = sec('Income', ['Income']), cogs = sec('Cost of Goods Sold', ['Cost of Goods Sold']);
+      if (cogs) rows.push({ c: ['Gross Profit', inc - cogs], cls: 'tot' });
+      const exp = sec('Expenses', ['Expense']); rows.push({ c: ['Net Operating Income', inc - cogs - exp], cls: 'tot' });
+      const oi = sec('Other Income', ['Other Income']), oe = sec('Other Expenses', ['Other Expense']);
+      rows.push({ c: ['NET INCOME', inc - cogs - exp + oi - oe], cls: 'grand' });
+      return { title: 'Profit & Loss' + (R.project ? ' — ' + (proj(R.project)?.name || '') : ''), sub: per, cols: [{ h: 'Account' }, { h: 'Amount', num: 1 }], rows };
+    }
+    case 'bs': {
+      const b = balances(null, R.to); const rows = []; const fs = fyStart(R.to);
+      const sec = (title, types, extra = []) => { const list = db.accounts.filter(a => types.includes(a.type)).sort(byNum).map(a => [a, natural(a, b[a.id])]).filter(x => x[1]); let s = 0;
+        rows.push({ c: [title, ''], cls: 'sec' }); list.forEach(([a, v]) => { s += v; rows.push({ c: [acctName(a), v], ind: 1, acct: a.id, from: '' }); });
+        extra.forEach(([l, v]) => { s += v; rows.push({ c: [l, v], ind: 1 }); }); rows.push({ c: ['Total ' + title, s], cls: 'tot' }); return r2(s); };
+      const assets = sec('Assets', ['Asset']); const liab = sec('Liabilities', ['Liability']);
+      const re = netIncome(null, addDays(fs, -1)), ni = netIncome(fs, R.to);
+      const eq = sec('Equity', ['Equity'], [['Retained Earnings (prior years)', re], ['Net Income (this fiscal year)', ni]]);
+      rows.push({ c: ['Total Liabilities & Equity', liab + eq], cls: 'grand' });
+      return { title: 'Balance Sheet', sub: 'As of ' + R.to, cols: [{ h: 'Account' }, { h: 'Amount', num: 1 }], rows, foot: Math.abs(assets - liab - eq) > 0.01 ? '⚠ Out of balance by ' + fmt(assets - liab - eq) : 'Assets = Liabilities + Equity ✓' };
+    }
+    case 'tb': {
+      const b = balances(null, R.to); let D = 0, C = 0; const rows = [];
+      db.accounts.slice().sort(byNum).forEach(a => { const x = b[a.id]; if (!x) return; const n = r2(x.dr - x.cr); if (!n) return; if (n > 0) D += n; else C -= n; rows.push({ c: [acctName(a), n > 0 ? n : '', n < 0 ? -n : ''], acct: a.id, from: '' }); });
+      rows.push({ c: ['TOTAL', D, C], cls: 'grand' });
+      return { title: 'Trial Balance', sub: 'As of ' + R.to, cols: [{ h: 'Account' }, { h: 'Debit', num: 1 }, { h: 'Credit', num: 1 }], rows };
+    }
+    case 'gl': {
+      const rows = []; const accts = R.acct ? [acct(R.acct)] : db.accounts.slice().sort(byNum);
+      for (const a of accts) {
+        if (!a) continue; const sign = DEBIT_NORMAL.has(a.type) ? 1 : -1; let bal = 0; const lines = [];
+        for (const t of db.txns) { if (!live(t) || (R.to && t.date > R.to)) continue; for (const p of postings(t)) { if (p.accountId !== a.id || (R.project && p.projectId !== R.project)) continue; const amt = sign * (p.debit - p.credit);
+          if (R.from && t.date < R.from) { if (!PL_TYPES.has(a.type) || t.date >= fyStart(R.from)) bal += amt; } else lines.push({ t, p, amt }); } }
+        if (!lines.length && !bal) continue;
+        lines.sort((x, y) => x.t.date.localeCompare(y.t.date) || (x.t.created || '').localeCompare(y.t.created || ''));
+        rows.push({ c: [acctName(a), '', '', '', '', '', bal], cls: 'sec' });
+        for (const l of lines) { bal = r2(bal + l.amt); rows.push({ c: [l.t.date, TT[l.t.type].label, l.t.num || '', txName(l.t), l.p.memo, l.p.debit ? l.p.debit : -l.p.credit, bal], txn: l.t.id }); }
+        rows.push({ c: ['Ending balance', '', '', '', '', '', bal], cls: 'tot' });
+      }
+      return { title: 'General Ledger' + (R.acct ? ' — ' + acctName(acct(R.acct)) : ''), sub: per, cols: [{ h: 'Date' }, { h: 'Type' }, { h: 'No.' }, { h: 'Name' }, { h: 'Memo' }, { h: 'Debit(+)/Credit(−)', num: 1 }, { h: 'Balance', num: 1 }], rows };
+    }
+    case 'ar': case 'ap': {
+      const type = R.id === 'ar' ? 'invoice' : 'bill'; const kind = R.id === 'ar' ? 'customer' : 'vendor'; const rows = []; const T = [0, 0, 0, 0, 0, 0];
+      const docs = db.txns.filter(t => t.type === type && live(t) && t.date <= R.to).map(t => {
+        const paid = db.txns.filter(p => live(p) && p.linkId === t.id && p.date <= R.to).reduce((s, p) => s + (+p.amount || 0), 0); return [t, r2(txTotal(t) - paid)]; }).filter(x => x[1] > 0.004);
+      docs.sort((a, b) => (party(kind, a[0].partyId)?.name || '').localeCompare(party(kind, b[0].partyId)?.name || '') || a[0].date.localeCompare(b[0].date));
+      for (const [t, o] of docs) { const late = daysBetween(t.dueDate || t.date, R.to); const k = late <= 0 ? 0 : late <= 30 ? 1 : late <= 60 ? 2 : late <= 90 ? 3 : 4; const c = ['', '', '', '', '']; c[k] = o; T[k] += o; T[5] += o;
+        rows.push({ c: [party(kind, t.partyId)?.name || '', t.num || '', t.date, t.dueDate || '', ...c, o], txn: t.id }); }
+      rows.push({ c: ['TOTAL', '', '', '', ...T], cls: 'grand' });
+      return { title: REPORTS[R.id], sub: 'As of ' + R.to, cols: [{ h: 'Name' }, { h: 'No.' }, { h: 'Date' }, { h: 'Due' }, { h: 'Current', num: 1 }, { h: '1–30', num: 1 }, { h: '31–60', num: 1 }, { h: '61–90', num: 1 }, { h: '90+', num: 1 }, { h: 'Open', num: 1 }], rows };
+    }
+    case 'bycust': case 'byvend': {
+      const kind = R.id === 'bycust' ? 'customer' : 'vendor'; const types = kind === 'customer' ? ['invoice', 'deposit'] : ['bill', 'expense']; const m = {};
+      db.txns.filter(t => live(t) && types.includes(t.type) && inRange(t, R.from, R.to)).forEach(t => { const k = t.partyId || ''; m[k] = m[k] || [0, 0, 0]; m[k][0] += sumLines(t); m[k][1] += +t.tax || 0; m[k][2]++; });
+      const rows = Object.entries(m).sort((a, b) => b[1][0] - a[1][0]).map(([k, v]) => ({ c: [party(kind, k)?.name || '(no name)', v[2] + '', v[0], v[1], v[0] + v[1]] }));
+      const tot = Object.values(m).reduce((s, v) => [s[0] + v[0], s[1] + v[1]], [0, 0]); rows.push({ c: ['TOTAL', '', tot[0], tot[1], tot[0] + tot[1]], cls: 'grand' });
+      return { title: REPORTS[R.id], sub: per, cols: [{ h: kind === 'customer' ? 'Client' : 'Vendor' }, { h: '#', num: 1 }, { h: 'Before tax', num: 1 }, { h: 'Tax', num: 1 }, { h: 'Total', num: 1 }], rows };
+    }
+    case 'byproj': {
+      const rows = [...db.projects, { id: '', name: '(no project)' }].map(p => { const b = balances(R.from, R.to, p.id || null); let inc = 0, exp = 0;
+        if (!p.id) { const all = balances(R.from, R.to); const tagged = db.projects.map(x => balances(R.from, R.to, x.id));
+          for (const a of db.accounts) { if (!PL_TYPES.has(a.type)) continue; let v = natural(a, all[a.id]); tagged.forEach(tb => v -= natural(a, tb[a.id])); if (a.type.includes('Income')) inc += v; else exp += v; } }
+        else for (const a of db.accounts) { const v = natural(a, b[a.id]); if (a.type === 'Income' || a.type === 'Other Income') inc += v; else if (PL_TYPES.has(a.type)) exp += v; }
+        return { c: [p.name, inc, exp, inc - exp, p.budget ? +p.budget : '', p.budget ? +p.budget - exp : ''] }; });
+      return { title: 'Profit by Project', sub: per, cols: [{ h: 'Project' }, { h: 'Income', num: 1 }, { h: 'Costs', num: 1 }, { h: 'Profit', num: 1 }, { h: 'Budget', num: 1 }, { h: 'Budget left', num: 1 }], rows };
+    }
+    case 'cash': {
+      const banks = db.accounts.filter(isBankish); const rows = []; let tin = 0, tout = 0;
+      for (const a of banks) { let i = 0, o = 0; db.txns.filter(t => live(t) && inRange(t, R.from, R.to)).forEach(t => postings(t).forEach(p => { if (p.accountId === a.id) { i += p.debit; o += p.credit; } }));
+        tin += i; tout += o;
+        const ob = R.from ? natural(a, balances(null, addDays(R.from, -1))[a.id]) : 0; rows.push({ c: [acctName(a), ob, i, o, natural(a, balances(null, R.to)[a.id])], acct: a.id }); }
+      rows.push({ c: ['TOTAL', '', tin, tout, ''], cls: 'grand' });
+      return { title: 'Cash Flow (by bank account)', sub: per, cols: [{ h: 'Account' }, { h: 'Opening', num: 1 }, { h: 'Debits (in / card paid)', num: 1 }, { h: 'Credits (out / card charges)', num: 1 }, { h: 'Closing', num: 1 }], rows };
+    }
+  }
+}
+
+/* ---------- taxes: GST/HST return + income tax summary ---------- */
+function pageTaxes() {
+  const T = ui.tax || (ui.tax = { from: fyStart(today()), to: today(), tab: 'gst' }); let h = '';
+  const ctl = `<div class="tabs">${[['gst', 'GST/HST return'], ['income', 'Income tax summary (T2125)'], ['detail', 'Tax detail']].map(([k, l]) => `<button class="${T.tab === k ? 'on' : ''}" onclick="ui.tax.tab='${k}';render()">${l}</button>`).join('')}</div>
+  <div class="filters noprint"><div><label>From</label><input type="date" value="${T.from}" onchange="ui.tax.from=this.value;render()"></div><div><label>To</label><input type="date" value="${T.to}" onchange="ui.tax.to=this.value;render()"></div><div><label>&nbsp;</label><div class="row"><button onclick="print()">Print / PDF</button><button onclick="exportTaxCSV()">CSV</button></div></div></div>`;
+  if (T.tab === 'gst') h = renderReport(gstReport(T));
+  else if (T.tab === 'income') h = renderReport(incomeTaxReport(T));
+  else h = renderReport(taxDetail(T));
+  return ctl + h + `<p class="hint">These worksheets give you the figures to enter on your CRA return (GST34 / NETFILE, T2125, or to hand to your accountant). OwnBooks does not file anything for you. Map each account to a tax line under Chart of Accounts.</p>`;
+}
+function gstData(T) {
+  let sales = 0, collected = 0, itc = 0, adjust = 0; const TA = db.meta.taxAccountId;
+  for (const t of db.txns) { if (!live(t) || !inRange(t, T.from, T.to)) continue;
+    if (t.type === 'invoice' || t.type === 'deposit') { sales += sumLines(t); collected += +t.tax || 0; }
+    else if (t.type === 'bill' || t.type === 'expense') itc += +t.tax || 0;
+    else if (t.type === 'journal') for (const l of t.lines) if (l.accountId === TA) adjust += (+l.credit || 0) - (+l.debit || 0); }
+  return { sales: r2(sales), collected: r2(collected), itc: r2(itc), adjust: r2(adjust) };
+}
+function gstReport(T) {
+  const d = gstData(T); const l105 = r2(d.collected + Math.max(0, d.adjust)), l108 = r2(d.itc + Math.max(0, -d.adjust)), net = r2(l105 - l108);
+  return { title: 'GST/HST Return Worksheet', sub: `Reporting period ${T.from} to ${T.to}`, cols: [{ h: 'Line' }, { h: 'Description' }, { h: 'Amount', num: 1 }], rows: [
+    { c: ['101', 'Sales and other revenue (before tax)', d.sales] }, { c: ['103', 'GST/HST collected or collectible', d.collected] },
+    { c: ['104', 'Adjustments (journal entries to tax account)', Math.max(0, d.adjust)] }, { c: ['105', 'Total GST/HST and adjustments', l105], cls: 'tot' },
+    { c: ['106', 'Input tax credits (ITCs) on purchases & expenses', d.itc] }, { c: ['107', 'Adjustments', Math.max(0, -d.adjust)] }, { c: ['108', 'Total ITCs and adjustments', l108], cls: 'tot' },
+    { c: ['109', net >= 0 ? 'Net tax — amount owing' : 'Net tax — refund claimed', net], cls: 'grand' }] };
+}
+function incomeTaxReport(T) {
+  const b = balances(T.from, T.to); const m = {}; const unm = [];
+  for (const a of db.accounts) { if (!PL_TYPES.has(a.type)) continue; const v = natural(a, b[a.id]); if (!v) continue; const k = a.taxLine || ''; if (!k) unm.push(a.name); (m[k] = m[k] || { v: 0, inc: a.type.includes('Income'), accts: [] }).v += v; m[k].accts.push(a.name); }
+  const rows = []; let inc = 0, exp = 0;
+  rows.push({ c: ['', 'Income', '', ''], cls: 'sec' });
+  Object.entries(m).filter(([, x]) => x.inc).sort().forEach(([k, x]) => { inc += x.v; rows.push({ c: [k || '—', TAX_LINES[k] ? TAX_LINES[k].replace(/^\S+ /, '') : 'Unmapped', x.accts.join(', '), x.v] }); });
+  rows.push({ c: ['', 'Gross income', '', inc], cls: 'tot' }); rows.push({ c: ['', 'Expenses', '', ''], cls: 'sec' });
+  let meals = 0, nonded = 0;
+  Object.entries(m).filter(([, x]) => !x.inc).sort().forEach(([k, x]) => { let v = x.v; if (k === '8523') { meals = r2(v / 2); v = meals; } if (k === 'NONDED') { nonded = v; return; } exp += v;
+    rows.push({ c: [k || '—', (TAX_LINES[k] ? TAX_LINES[k].replace(/^\S+ /, '') : 'Unmapped') + (k === '8523' ? ' — 50% of ' + fmt(x.v) : ''), x.accts.join(', '), v] }); });
+  rows.push({ c: ['', 'Total deductible expenses', '', exp], cls: 'tot' }); rows.push({ c: ['9946', 'Net income (loss) before adjustments', '', inc - exp], cls: 'grand' });
+  return { title: 'Income Tax Summary (T2125-style)', sub: `${T.from} to ${T.to}`, cols: [{ h: 'Line' }, { h: 'Description' }, { h: 'Accounts' }, { h: 'Amount', num: 1 }], rows,
+    foot: (unm.length ? `⚠ Not mapped to a tax line: ${esc(unm.join(', '))}. ` : '') + (nonded ? `Excluded as non-deductible: ${fmt(nonded)}. ` : '') + 'Meals & entertainment shown at 50%. CCA (depreciation) must be calculated separately.' };
+}
+function taxDetail(T) {
+  const rows = db.txns.filter(t => live(t) && +t.tax && inRange(t, T.from, T.to)).sort((a, b) => a.date.localeCompare(b.date))
+    .map(t => ({ c: [t.date, TT[t.type].label, t.num || '', txName(t), sumLines(t), ['invoice', 'deposit'].includes(t.type) ? +t.tax : '', ['bill', 'expense'].includes(t.type) ? +t.tax : ''], txn: t.id }));
+  return { title: 'Sales Tax Detail', sub: `${T.from} to ${T.to}`, cols: [{ h: 'Date' }, { h: 'Type' }, { h: 'No.' }, { h: 'Name' }, { h: 'Net', num: 1 }, { h: 'Tax collected', num: 1 }, { h: 'ITC', num: 1 }], rows };
+}
+function exportTaxCSV() { const T = ui.tax; const r = T.tab === 'gst' ? gstReport(T) : T.tab === 'income' ? incomeTaxReport(T) : taxDetail(T); download('tax-' + T.tab + '.csv', toCSV(reportRows(r)), 'text/csv'); }
+
+/* ---------- receipts gallery ---------- */
+function pageReceipts() { return `<div class="row" style="margin-bottom:12px"><button class="primary" onclick="snapReceipt()">📷 Snap a receipt</button><span class="hint">Photos are compressed and stored on this device, attached to the transaction.</span></div><div class="receipts" id="gallery">Loading…</div>`; }
+pageReceipts.after = async () => {
+  const files = (await fileAll()).sort((a, b) => b.added.localeCompare(a.added)); const g = $('#gallery'); if (!g) return;
+  g.innerHTML = files.map(f => { const t = db.txns.find(x => x.id === f.txnId); const url = URL.createObjectURL(f.blob);
+    return `<div class="receipt" style="width:150px">${f.type.startsWith('image/') ? `<img src="${url}" style="width:150px;height:150px" onclick="viewFile('${f.id}')">` : `<div class="doc" style="width:150px;height:150px" onclick="viewFile('${f.id}')">📄</div>`}
+    <div class="hint">${t ? `<a href="javascript:openTxById('${t.id}')">${t.date} · ${esc(txName(t) || TT[t.type].label)} · ${fmt(txTotal(t))}</a>` : '<span style="color:var(--danger)">Unlinked</span>'}</div></div>`; }).join('') || '<span class="muted">No receipts yet.</span>';
+};
+
+/* ---------- change history ---------- */
+function histLabel(e, o) {
+  if (!o) return ''; if (e === 'txn') return `${TT[o.type]?.label || o.type} ${o.num ? '#' + o.num : ''} · ${o.date} · ${fmt(txTotal(o))}${o.void ? ' (void)' : ''}`;
+  if (e === 'account') return acctName(o); if (e === 'settings') return 'Company settings'; return o.name || o.text || '';
+}
+function diffText(a, b) {
+  if (!a || !b) return ''; const out = []; const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of keys) { if (['updated', 'history'].includes(k)) continue; const x = JSON.stringify(a[k]), y = JSON.stringify(b[k]); if (x !== y) out.push(`${k}: ${(x || '—').slice(0, 160)}  →  ${(y || '—').slice(0, 160)}`); }
+  return out.join('\n');
+}
+function pageHistory() {
+  const f = ui.histFilter; const list = db.history.filter(h => !f || h.entityId === f || h.entity === f).slice(0, 400);
+  return `<div class="filters"><div><label>Show</label><select onchange="ui.histFilter=this.value;render()"><option value="">Everything</option>${['txn', 'account', 'customer', 'vendor', 'project', 'settings'].map(e => `<option ${f === e ? 'selected' : ''}>${e}</option>`).join('')}${f && !['txn', 'account', 'customer', 'vendor', 'project', 'settings'].includes(f) ? `<option selected value="${f}">this record only</option>` : ''}</select></div></div>
+  <p class="hint">Every create, edit and delete is recorded. You can freely change past entries — and restore any earlier version here.</p>
+  <div class="tablewrap"><table><thead><tr><th>When</th><th>What</th><th>Action</th><th>Record</th><th></th></tr></thead><tbody>
+  ${list.map(h => `<tr><td style="white-space:nowrap">${h.at.slice(0, 16).replace('T', ' ')}</td><td>${h.entity}</td><td>${h.action}</td><td>${esc(histLabel(h.entity, h.after || h.before))}${h.before && h.after ? `<details><summary class="hint">what changed</summary><div class="diff">${esc(diffText(h.before, h.after))}</div></details>` : ''}</td>
+  <td style="white-space:nowrap">${h.before ? `<button class="sm" onclick="restoreHist('${h.id}','before')" title="Put the record back the way it was before this change">Undo this change</button>` : `<button class="sm" onclick="restoreHist('${h.id}','before')">Undo (remove)</button>`}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No history yet.</td></tr>'}
+  </tbody></table></div>`;
+}
+function restoreHist(hid, which) {
+  const h = db.history.find(x => x.id === hid); if (!h) return; const state = h[which];
+  if (!confirm('Restore this record to the version ' + (which === 'before' ? 'before' : 'after') + ' this change? (The restore is itself logged.)')) return;
+  if (h.entity === 'settings') saveMeta(clone(state), 'restored');
+  else if (!state) removeEntity(h.entity, h.entityId, 'restored (removed)');
+  else upsert(h.entity, clone(state), 'restored');
+  render(); toast('Restored');
+}
+
+/* ---------- settings & data ownership ---------- */
+function pageSettings() {
+  const m = db.meta; const F = (n, l, t = 'text') => `<div><label>${l}</label><input name="${n}" type="${t}" value="${esc(m[n])}"></div>`;
+  const canLink = 'showSaveFilePicker' in window;
+  return `<form id="sform" onsubmit="return false"><div class="card"><div class="section" style="margin-top:0">Company</div><div class="grid">
+    ${F('company', 'Business name')}${F('legalName', 'Legal name')}${F('taxNumber', 'GST/HST / Business #')}${F('email', 'Email')}${F('phone', 'Phone')}
+    <div><label>Currency</label><input name="currency" value="${esc(m.currency)}" maxlength="3"></div>
+    <div><label>Fiscal year starts</label><select name="fyStartMonth">${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((x, i) => `<option value="${i + 1}" ${+m.fyStartMonth === i + 1 ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    <div><label>Sales tax account</label><select name="taxAccountId">${acctOptions(m.taxAccountId, a => a.type === 'Liability' || a.type === 'Asset')}</select></div>
+    <div><label>Default invoice terms (days)</label><input name="defaultTermsDays" type="number" value="${esc(m.defaultTermsDays)}"></div>
+    <div><label>Theme</label><select name="theme">${['auto', 'light', 'dark'].map(x => `<option ${m.theme === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    <div style="grid-column:1/-1"><label>Address</label><textarea name="address">${esc(m.address)}</textarea></div>
+    <div style="grid-column:1/-1"><label>Invoice footer / terms</label><textarea name="invoiceTerms">${esc(m.invoiceTerms)}</textarea></div></div></div>
+  <div class="card" style="margin-top:12px"><div class="section" style="margin-top:0">Sales tax rates</div><table id="rates">${m.taxRates.map(rateRow).join('')}</table>
+    <button type="button" onclick="addRateRow()">+ Add rate</button></div>
+  <div class="card" style="margin-top:12px"><div class="section" style="margin-top:0">Custom fields <span class="hint">— add your own fields to any form (e.g. File #, Matter, Mileage, Approved by)</span></div><table id="cfs"><tr><th>Label</th><th>Appears on</th><th>Type</th><th>Choices (for list)</th><th></th></tr>${(m.customFields || []).map(cfRow).join('')}</table>
+    <button type="button" onclick="$('#cfs').insertAdjacentHTML('beforeend',cfRow({id:uid(),label:'',appliesTo:'all-txn',type:'text'}))">+ Add field</button></div>
+  <div class="row" style="margin:12px 0"><button class="primary" onclick="saveSettings()">Save settings</button></div></form>
+  <div class="card"><div class="section" style="margin-top:0">Your data — you own it</div>
+    <p>All records live in this browser's private storage on <b>this device only</b>. No account, no cloud, no server. To move it, keep a copy, or give it to your accountant, use the buttons below.</p>
+    <div class="row"><button class="primary" onclick="exportBackup()">⬇ Download full backup (.json incl. receipts)</button>
+    <label class="btn" style="margin:0;color:var(--ink)">⬆ Restore from backup<input type="file" accept=".json,application/json" hidden onchange="importBackup(this.files[0]);this.value=''"></label>
+    ${canLink ? `<button onclick="linkFile()">${fileHandle ? '✓ Linked: ' + esc(fileHandle.name) : '🔗 Auto-save to a file on my computer'}</button>` : ''}
+    <button onclick="exportTxCSV()">Export all transactions (CSV)</button><button onclick="exportListsCSV()">Export clients/vendors/accounts (CSV)</button></div>
+    <p class="hint" id="storageinfo"></p>
+    <p class="hint">Last backup downloaded: ${esc(m.lastBackup ? m.lastBackup.slice(0, 16).replace('T', ' ') : 'never')}. Clearing your browser's site data deletes the books — keep regular backups.</p>
+    <div class="row" style="margin-top:10px"><button class="danger" onclick="resetAll()">Erase everything on this device…</button><button onclick="loadDemo()">Load demo data</button></div></div>`;
+}
+pageSettings.after = async () => { if (navigator.storage?.estimate) { const e = await navigator.storage.estimate(); const p = navigator.storage.persisted ? await navigator.storage.persisted() : false; const el = $('#storageinfo'); if (el) el.textContent = `Using ${(e.usage / 1048576).toFixed(1)} MB of ${(e.quota / 1048576).toFixed(0)} MB available. Persistent storage: ${p ? 'granted (browser won\'t auto-clear)' : 'not granted — back up regularly'}.`; } };
+function rateRow(r) { return `<tr data-id="${r.id}"><td><input data-k="name" value="${esc(r.name)}" placeholder="e.g. PST 7%"></td><td style="width:120px"><input data-k="rate" type="number" step="any" class="num" value="${r.rate ?? ''}"></td><td style="width:40px"><button type="button" class="icon" onclick="this.closest('tr').remove()">✕</button></td></tr>`; }
+function addRateRow() { $('#rates').insertAdjacentHTML('beforeend', rateRow({ id: uid(), name: '' })); }
+function cfRow(cf) {
+  const targets = { 'all-txn': 'All transactions', ...Object.fromEntries(Object.entries(TT).map(([k, v]) => [k, v.label])), customer: 'Clients', vendor: 'Vendors' };
+  return `<tr data-id="${cf.id}"><td><input data-k="label" value="${esc(cf.label)}"></td><td><select data-k="appliesTo">${Object.entries(targets).map(([k, v]) => `<option value="${k}" ${cf.appliesTo === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+  <td><select data-k="type">${['text', 'number', 'date', 'select'].map(x => `<option ${cf.type === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td><td><input data-k="options" value="${esc(cf.options)}" placeholder="a, b, c"></td><td><button type="button" class="icon" onclick="this.closest('tr').remove()">✕</button></td></tr>`;
+}
+function saveSettings() {
+  const E = $('#sform').elements; const m = clone(db.meta);
+  for (const k of ['company', 'legalName', 'taxNumber', 'email', 'phone', 'currency', 'address', 'invoiceTerms', 'theme', 'taxAccountId']) m[k] = E[k].value.trim();
+  m.currency = (m.currency || 'CAD').toUpperCase(); m.fyStartMonth = +E.fyStartMonth.value; m.defaultTermsDays = +E.defaultTermsDays.value || 30;
+  m.taxRates = $$('#rates tr[data-id]').map(tr => ({ id: tr.dataset.id, name: tr.querySelector('[data-k=name]').value.trim(), rate: +tr.querySelector('[data-k=rate]').value || 0 })).filter(r => r.name);
+  m.customFields = $$('#cfs tr[data-id]').map(tr => { const o = { id: tr.dataset.id }; tr.querySelectorAll('[data-k]').forEach(i => o[i.dataset.k] = i.value.trim()); return o; }).filter(c => c.label);
+  saveMeta(m); render(); toast('Settings saved');
+}
+const blobToDataURL = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
+async function buildBackup() { const files = await fileAll(); const out = []; for (const f of files) { const { blob, ...rest } = f; out.push({ ...rest, data: await blobToDataURL(blob) }); } return JSON.stringify({ app: 'OwnBooks', exported: nowISO(), db, files: out }); }
+async function exportBackup() { const s = await buildBackup(); db.meta.lastBackup = nowISO(); save(); download(`${(db.meta.company || 'books').replace(/[^\w-]+/g, '_')}-backup-${today()}.json`, s, 'application/json'); render(); }
+async function importBackup(file) {
+  if (!file) return; try {
+    const j = JSON.parse(await file.text()); const d = j.db || j; if (!d.accounts || !d.txns) throw new Error('Not an OwnBooks backup');
+    if (!confirm(`Replace ALL data on this device with the backup "${file.name}" (${d.txns.length} transactions)? Download a backup of the current data first if unsure.`)) return;
+    db = normalize(d); await kvSet('db', db); await fileClear();
+    for (const f of j.files || []) { const blob = await (await fetch(f.data)).blob(); const { data, ...rest } = f; await filePut({ ...rest, blob }); }
+    _fmt = null; render(); alert('Backup restored.');
+  } catch (e) { alert('Could not restore: ' + e.message); }
+}
+async function linkFile() {
+  try { fileHandle = await window.showSaveFilePicker({ suggestedName: `${(db.meta.company || 'books').replace(/[^\w-]+/g, '_')}-ownbooks.json`, types: [{ description: 'OwnBooks data', accept: { 'application/json': ['.json'] } }] });
+    await writeLinkedFile(); render(); } catch (e) { if (e.name !== 'AbortError') alert(e.message); }
+}
+async function writeLinkedFile() { try { const w = await fileHandle.createWritable(); await w.write(await buildBackup()); await w.close(); } catch (e) { toast('File save failed: ' + e.message); } }
+function exportListsCSV() {
+  const rows = [['List', 'Name', 'Company', 'Email', 'Phone', 'Address', 'Tax #', 'Number/Type', 'Notes']];
+  db.customers.forEach(p => rows.push(['Client', p.name, p.company, p.email, p.phone, p.address, p.taxNumber, '', p.notes]));
+  db.vendors.forEach(p => rows.push(['Vendor', p.name, p.company, p.email, p.phone, p.address, p.taxNumber, '', p.notes]));
+  db.accounts.forEach(a => rows.push(['Account', a.name, '', '', '', '', a.taxLine, a.number + ' ' + a.type + '/' + a.subtype, a.desc]));
+  download('lists.csv', toCSV(rows), 'text/csv');
+}
+async function resetAll() { if (prompt('Type ERASE to permanently delete all books and receipts on this device.') !== 'ERASE') return; db = seed(); await kvSet('db', db); await fileClear(); _fmt = null; render(); }
+function loadDemo() {
+  if (db.txns.length && !confirm('Add demo clients, vendors and transactions to your current data?')) return;
+  const A = n => db.accounts.find(a => a.name === n)?.id; const chq = A('Chequing'), cc = A('Business Credit Card'), hst = db.meta.taxRates[0];
+  const c1 = { id: uid(), name: 'Northwind Holdings', email: 'ap@northwind.example', custom: {}, active: true }, c2 = { id: uid(), name: 'Maple & Co.', custom: {}, active: true };
+  const v1 = { id: uid(), name: 'Office Depot', defaultAccountId: A('Office Supplies'), custom: {}, active: true }, v2 = { id: uid(), name: 'Bell Canada', defaultAccountId: A('Telephone & Internet'), custom: {}, active: true }, v3 = { id: uid(), name: 'Landlord Inc.', defaultAccountId: A('Rent'), custom: {}, active: true };
+  const p1 = { id: uid(), name: 'Northwind matter', customerId: c1.id, status: 'active', budget: 5000 };
+  [c1, c2].forEach(x => upsert('customer', x)); [v1, v2, v3].forEach(x => upsert('vendor', x)); upsert('project', p1);
+  const y = today().slice(0, 4), T = (o) => upsert('txn', Object.assign({ id: uid(), custom: {}, created: nowISO(), updated: nowISO() }, o));
+  T({ type: 'journal', date: `${y}-01-01`, num: 'OB', memo: 'Opening balance', lines: [{ accountId: chq, debit: 10000, credit: 0, desc: 'Opening' }, { accountId: A("Owner's Equity / Contributions"), debit: 0, credit: 10000, desc: 'Opening' }] });
+  const i1 = uid(); T({ id: i1, type: 'invoice', date: `${y}-02-03`, dueDate: `${y}-03-05`, num: '1001', partyId: c1.id, projectId: p1.id, taxRateId: hst.id, tax: 520, lines: [{ accountId: A('Sales / Professional Fees'), desc: 'Consulting – February', qty: 10, rate: 400, amount: 4000, projectId: p1.id }] });
+  T({ type: 'payment', date: `${y}-03-01`, partyId: c1.id, linkId: i1, bankAccountId: chq, amount: 4520 });
+  T({ type: 'invoice', date: `${y}-03-10`, dueDate: `${y}-04-09`, num: '1002', partyId: c2.id, taxRateId: hst.id, tax: 195, lines: [{ accountId: A('Sales / Professional Fees'), desc: 'Advisory services', qty: 1, rate: 1500, amount: 1500 }] });
+  T({ type: 'expense', date: `${y}-02-10`, partyId: v1.id, bankAccountId: cc, taxRateId: hst.id, tax: 26, lines: [{ accountId: A('Office Supplies'), desc: 'Paper, toner', amount: 200 }] });
+  T({ type: 'expense', date: `${y}-02-15`, partyId: v2.id, bankAccountId: chq, taxRateId: hst.id, tax: 13, lines: [{ accountId: A('Telephone & Internet'), desc: 'Internet', amount: 100 }] });
+  T({ type: 'bill', date: `${y}-03-01`, dueDate: `${y}-03-31`, partyId: v3.id, num: 'R-03', taxRateId: hst.id, tax: 260, lines: [{ accountId: A('Rent'), desc: 'March rent', amount: 2000 }] });
+  T({ type: 'expense', date: `${y}-03-05`, bankAccountId: cc, memo: 'Client lunch', projectId: p1.id, taxRateId: hst.id, tax: 11.7, lines: [{ accountId: A('Meals & Entertainment'), desc: 'Lunch with Northwind', amount: 90, projectId: p1.id }] });
+  T({ type: 'transfer', date: `${y}-03-20`, bankAccountId: chq, toAccountId: cc, amount: 237.7, memo: 'Pay credit card' });
+  render(); toast('Demo data loaded');
+}
+
+/* ---------- boot ---------- */
+async function boot() {
+  $('#modal').addEventListener('close', runModalClose);
+  try { idb = await idbOpen(); db = await kvGet('db'); } catch (e) { alert('This browser blocked local storage (private mode?). Data will not persist: ' + e.message); }
+  if (!db) { const legacy = localStorage.getItem('ownbooks-data-v1'); db = legacy ? JSON.parse(legacy) : seed(); if (idb) await kvSet('db', db); }
+  db = normalize(db);
+  if (navigator.storage?.persist) navigator.storage.persist().catch(() => { });
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
+  render();
+  if (new URLSearchParams(location.search).has('oauth_state_id')) { location.hash = 'banking'; ui.bankTab = 'connect'; connectPlaid(null, true); }
+  else if (db.meta.bankLinks?.autoSync && Object.keys(db.meta.bankLinks.accounts || {}).length) syncAll(true);
+}
+window.addEventListener('beforeunload', () => { if (saveTimer && idb) kvSet('db', db); });
+boot();
+</script>
+</body></html>

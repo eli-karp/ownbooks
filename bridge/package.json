@@ -1,0 +1,6 @@
+{
+  "name": "ownbooks-bank-bridge",
+  "private": true,
+  "description": "Runs on your own computer. Connects OwnBooks to your bank.",
+  "dependencies": { "playwright-core": "1.63.0" }
+}

@@ -1,0 +1,6 @@
+node_modules/
+package-lock.json
+dist/bank-bridge/node_modules/
+dist/bank-bridge/package-lock.json
+OwnBooks.zip
+.DS_Store
