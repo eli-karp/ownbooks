@@ -18,6 +18,20 @@ Stored in the browser's IndexedDB on that device. **Settings → Download full b
 ## Develop
 Edit files in `src/`, then run `python3 build.py`.
 
+## Moving from QuickBooks Online (Import Data page)
+1. In QuickBooks Online: **⚙ Settings → Export data** → Reports + Lists, All dates → Export to Excel (one .zip).
+2. Also export (Export → Export to Excel) as of the day before your cut-over date: **Account List**, **Trial Balance**, **A/R Aging Detail**, **A/P Aging Detail**.
+3. In OwnBooks open **Import Data**, set the cut-over date, drop all the files in. Each file is recognized automatically
+   (accounts, clients, vendors, trial balance, open invoices, unpaid bills, journal); check the column matches and preview, then **Import all**.
+4. The *Check against QuickBooks* panel shows trial-balance totals, A/R, A/P and bank balances to compare with QuickBooks.
+   Every import can be undone; importing the same file twice adds nothing.
+
+How balances are carried over: the trial balance becomes one opening entry dated the day before cut-over. Receivable/payable
+balances are rebuilt from the individual open invoices and bills (each posted against Opening Balance Equity, which nets to zero),
+so you can record payments against them. The Journal report can bring full history; if you import it together with the trial
+balance, tick "only on or after the cut-over date" so nothing is counted twice. Journal-imported payments are not linked to
+specific invoices — after cut-over, record new payments in OwnBooks.
+
 ## Sign in to your bank with your username & password (like QuickBooks)
 Banking → 🔗 Bank connections → **Sign in to your bank**:
 1. Start the Bank Bridge (below). First time only it installs its helper (needs internet once) and needs Google Chrome or Microsoft Edge installed.

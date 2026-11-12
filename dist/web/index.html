@@ -244,7 +244,7 @@ function seed() {
 function normalize(d) {
   const s = seed();
   d.meta = Object.assign({}, s.meta, d.meta || {});
-  for (const k of ['accounts', 'customers', 'vendors', 'projects', 'txns', 'bankFeed', 'bankRules', 'history']) if (!Array.isArray(d[k])) d[k] = [];
+  for (const k of ['accounts', 'customers', 'vendors', 'projects', 'txns', 'bankFeed', 'bankRules', 'history', 'imports']) if (!Array.isArray(d[k])) d[k] = [];
   if (!d.accounts.length) d.accounts = s.accounts;
   return d;
 }
@@ -361,7 +361,7 @@ const PAGES = {
   dashboard: ['Dashboard', pageDashboard], transactions: ['Transactions', pageTransactions], banking: ['Banking', pageBanking],
   customers: ['Clients', pageCustomers], vendors: ['Vendors', pageVendors], projects: ['Projects', pageProjects],
   accounts: ['Chart of Accounts', pageAccounts], reports: ['Reports', pageReports], taxes: ['Taxes', pageTaxes],
-  receipts: ['Receipts', pageReceipts], history: ['Change History', pageHistory], settings: ['Settings & Data', pageSettings]
+  receipts: ['Receipts', pageReceipts], history: ['Change History', pageHistory], import: ['Import Data', pageImport], settings: ['Settings & Data', pageSettings]
 };
 function nav() {
   const cur = (location.hash.slice(1) || 'dashboard').split('/')[0];
@@ -661,7 +661,7 @@ function pageDashboard() {
   const review = db.bankFeed.filter(x => x.status === 'review').length;
   const recent = [...db.txns].sort((a, b) => (b.updated || '').localeCompare(a.updated || '')).slice(0, 8);
   const empty = !db.txns.length;
-  return `${empty ? `<div class="card" style="margin-bottom:16px"><strong>Welcome!</strong> Start by setting your business name and tax rates in <a href="#settings">Settings</a>, importing a bank statement in <a href="#banking">Banking</a>, or tapping <b>+ New</b>. Everything you enter is saved only on this device. Use <a href="#settings">Settings → Back up</a> to keep a copy.</div>` : ''}
+  return `${empty ? `<div class="card" style="margin-bottom:16px"><strong>Welcome!</strong> Moving from QuickBooks? <a href="#import"><b>Import your QuickBooks data</b></a>. Or start by setting your business name and tax rates in <a href="#settings">Settings</a>, importing a bank statement in <a href="#banking">Banking</a>, or tapping <b>+ New</b>. Everything you enter is saved only on this device. Use <a href="#settings">Settings → Back up</a> to keep a copy.</div>` : ''}
   <div class="cards">
     <div class="card kpi"><div class="l">Income (fiscal YTD)</div><div class="v">${fmt(inc)}</div></div>
     <div class="card kpi"><div class="l">Expenses (fiscal YTD)</div><div class="v">${fmt(exp)}</div></div>
@@ -1407,6 +1407,374 @@ function taxDetail(T) {
 }
 function exportTaxCSV() { const T = ui.tax; const r = T.tab === 'gst' ? gstReport(T) : T.tab === 'income' ? incomeTaxReport(T) : taxDetail(T); download('tax-' + T.tab + '.csv', toCSV(reportRows(r)), 'text/csv'); }
 
+/* ---------- import data (QuickBooks Online exports: .xlsx, .csv, or the "Export data" .zip) ---------- */
+/* Tiny ZIP + XLSX reader (no libraries; uses the browser's built-in DecompressionStream). */
+async function unzip(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf); let e = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 70000); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('This is not a valid .zip / .xlsx file.');
+  const count = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const out = {};
+  const dec = new TextDecoder();
+  for (let n = 0; n < count; n++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + nlen)); p += 46 + nlen + xlen + clen;
+    if (name.endsWith('/')) continue;
+    const lstart = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true); const data = u8.subarray(lstart, lstart + csize);
+    out[name] = async () => {
+      if (method === 0) return data;
+      if (method !== 8) throw new Error('Unsupported compression in ' + name);
+      if (typeof DecompressionStream === 'undefined') throw new Error('This browser cannot open Excel files. Update it, or export as CSV instead.');
+      return new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    };
+  }
+  return out;
+}
+const xmlOf = async (zip, name) => zip[name] ? new DOMParser().parseFromString(new TextDecoder().decode(await zip[name]()), 'application/xml') : null;
+async function readXlsx(buf) {
+  const zip = await unzip(buf); const wb = await xmlOf(zip, 'xl/workbook.xml'); if (!wb) throw new Error('Not an Excel workbook.');
+  const rels = await xmlOf(zip, 'xl/_rels/workbook.xml.rels'); const relMap = {};
+  if (rels) for (const r of rels.getElementsByTagName('Relationship')) relMap[r.getAttribute('Id')] = r.getAttribute('Target');
+  const ssx = await xmlOf(zip, 'xl/sharedStrings.xml'); const ss = ssx ? [...ssx.getElementsByTagName('si')].map(si => [...si.getElementsByTagName('t')].map(t => t.textContent).join('')) : [];
+  const colIdx = ref => { const m = /^([A-Z]+)/.exec(ref || ''); if (!m) return -1; let n = 0; for (const ch of m[1]) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+  const sheets = [];
+  for (const s of wb.getElementsByTagName('sheet')) {
+    const rid = s.getAttribute('r:id') || s.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+    let target = relMap[rid] || ''; target = target.startsWith('/') ? target.slice(1) : 'xl/' + target.replace(/^\.\//, '');
+    const sx = await xmlOf(zip, target); if (!sx) continue; const rows = [];
+    for (const r of sx.getElementsByTagName('row')) {
+      const ri = (+r.getAttribute('r') || rows.length + 1) - 1; const row = []; let ci = 0;
+      for (const c of r.getElementsByTagName('c')) {
+        const idx = colIdx(c.getAttribute('r')); if (idx >= 0) ci = idx;
+        const t = c.getAttribute('t'), v = c.getElementsByTagName('v')[0]?.textContent;
+        let val = '';
+        if (t === 's') val = ss[+v] ?? ''; else if (t === 'inlineStr') val = [...c.getElementsByTagName('t')].map(x => x.textContent).join('');
+        else if (t === 'str' || t === 'e') val = v ?? ''; else if (t === 'b') val = v === '1' ? 'TRUE' : 'FALSE'; else val = v == null ? '' : (isNaN(+v) ? v : +v);
+        row[ci++] = val;
+      }
+      rows[ri] = [...row].map(x => x ?? '');
+    }
+    sheets.push({ sheet: s.getAttribute('name'), rows: [...rows].map(r => r || []) });
+  }
+  return sheets;
+}
+
+/* What each kind of QuickBooks export looks like, and the column names it can use. */
+const IMPORT_KINDS = {
+  accounts: { label: 'Chart of accounts', step: 1, fields: { name: ['account', 'full name', 'account name', 'name', 'account full name'], type: ['type', 'account type'], detail: ['detail type', 'detail'], number: ['account #', 'account number', 'acct #', 'number', 'code'], description: ['description'] }, required: ['name', 'type'] },
+  customers: { label: 'Clients (Customer Contact List)', step: 2, fields: { name: ['customer', 'customer full name', 'display name', 'name', 'client'], company: ['company', 'company name'], email: ['email', 'e-mail'], phone: ['phone numbers', 'phone', 'main phone', 'mobile'], address: ['billing address', 'bill address', 'address'], taxNumber: ['tax registration no', 'business id no', 'tax number'], notes: ['notes', 'note'] }, required: ['name'] },
+  vendors: { label: 'Vendors (Vendor Contact List)', step: 3, fields: { name: ['vendor', 'vendor full name', 'display name', 'name', 'supplier'], company: ['company', 'company name'], email: ['email', 'e-mail'], phone: ['phone numbers', 'phone', 'main phone', 'mobile'], address: ['address', 'billing address'], taxNumber: ['tax registration no', 'business id no', 'tax number', 'account #'], notes: ['notes', 'note'] }, required: ['name'] },
+  tb: { label: 'Trial Balance → opening balances', step: 4, fields: { account: ['account', 'account full name', 'full name', 'name'], debit: ['debit'], credit: ['credit'] }, required: ['account', 'debit', 'credit'] },
+  ar: { label: 'Open invoices (A/R Aging Detail)', step: 5, fields: { date: ['date', 'transaction date'], type: ['transaction type', 'type'], num: ['num', 'no.', 'number', 'invoice no'], name: ['customer', 'customer full name', 'name', 'client'], due: ['due date', 'due'], open: ['open balance', 'balance', 'amount due'] }, required: ['date', 'name', 'open'] },
+  ap: { label: 'Unpaid bills (A/P Aging Detail)', step: 6, fields: { date: ['date', 'transaction date'], type: ['transaction type', 'type'], num: ['num', 'no.', 'number', 'bill no'], name: ['vendor', 'vendor full name', 'name', 'supplier'], due: ['due date', 'due'], open: ['open balance', 'balance', 'amount due'] }, required: ['date', 'name', 'open'] },
+  journal: { label: 'All transactions (Journal report)', step: 7, fields: { date: ['date', 'transaction date'], type: ['transaction type', 'type'], num: ['num', 'no.'], name: ['name'], memo: ['memo/description', 'memo', 'description'], account: ['account', 'account full name', 'account name'], debit: ['debit'], credit: ['credit'] }, required: ['date', 'account', 'debit', 'credit'] }
+};
+const normH = h => String(h ?? '').toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9#/ .-]/g, '').trim();
+const ALL_ALIASES = new Set(Object.values(IMPORT_KINDS).flatMap(k => Object.values(k.fields).flat()));
+function findHeader(rows) {
+  let best = -1, score = 1;
+  for (let i = 0; i < Math.min(rows.length, 25); i++) { const s = (rows[i] || []).filter(c => ALL_ALIASES.has(normH(c))).length; if (s > score) { score = s; best = i; } }
+  return best;
+}
+function detectKind(H, text) {
+  const has = (...a) => a.some(x => H.some(h => h === x)); const T = text.toLowerCase();
+  if (has('debit') && has('credit')) return has('date', 'transaction date') ? 'journal' : 'tb';
+  if (/receivable/.test(T)) return 'ar';
+  if (/payable|unpaid bills/.test(T)) return 'ap';
+  if (has('open balance') && has('date')) return has('vendor') ? 'ap' : 'ar';
+  if (/account list|chart of accounts/.test(T) || has('detail type') || (has('type') && has('account') && !has('date'))) return 'accounts';
+  if (has('vendor') || /vendor/.test(T)) return 'vendors';
+  if (has('customer') || /customer|client/.test(T)) return 'customers';
+  return '';
+}
+function autoMap(kind, H) {
+  const map = {}, used = new Set(); const F = IMPORT_KINDS[kind].fields;
+  for (const test of [(h, a) => h === a, (h, a) => h.startsWith(a), (h, a) => h.includes(a)])
+    for (const [f, aliases] of Object.entries(F)) { if (f in map) continue;
+      for (const a of aliases) { const i = H.findIndex((h, k) => !used.has(k) && h && test(h, a)); if (i >= 0) { map[f] = i; used.add(i); break; } } }
+  for (const f of ['account', 'name']) if (f in F && !(f in map) && H[0] === '' && !used.has(0)) map[f] = 0; // QuickBooks leaves the first column's header blank
+  return map;
+}
+function excelDate(n) { return new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 864e5).toISOString().slice(0, 10); }
+function impDate(v, order) {
+  if (typeof v === 'number') return v > 20000 && v < 80000 ? excelDate(v) : '';
+  const s = String(v || '').trim(); if (!/\d/.test(s) || s.length < 6) return '';
+  return parseDateAny(s, order);
+}
+function guessDateOrder(vals) {
+  let dmy = 0, mdy = 0;
+  for (const v of vals) { const m = /^(\d{1,2})[/.-](\d{1,2})[/.-]\d{2,4}/.exec(String(v).trim()); if (!m) continue; if (+m[1] > 12) dmy++; if (+m[2] > 12) mdy++; }
+  return dmy > mdy ? 'dmy' : mdy > dmy ? 'mdy' : 'ymd';
+}
+/* QuickBooks account type → OwnBooks type + detail type */
+function mapQBType(type, detail = '') {
+  const t = (type + ' ' + detail).toLowerCase(), T = String(type).toLowerCase();
+  if (/receivable|a\/r/.test(t)) return ['Asset', 'Accounts Receivable'];
+  if (/payable|a\/p/.test(T)) return ['Liability', 'Accounts Payable'];
+  if (/credit card/.test(T)) return ['Liability', 'Credit Card'];
+  if (/^bank|cash on hand|chequing|checking|savings/.test(T)) return ['Asset', 'Bank'];
+  if (/other current asset|current asset/.test(T)) return ['Asset', 'Other Current Asset'];
+  if (/fixed asset|property|plant/.test(T)) return ['Asset', 'Fixed Asset'];
+  if (/other asset|non-current asset/.test(T)) return ['Asset', 'Other Asset'];
+  if (/other current liabilit|current liabilit/.test(T)) return ['Liability', 'Other Current Liability'];
+  if (/long term liabilit|long-term liabilit|non-current liabilit/.test(T)) return ['Liability', 'Long Term Liability'];
+  if (/equity/.test(T)) return ['Equity', 'Equity'];
+  if (/cost of (goods sold|sales)/.test(T)) return ['Cost of Goods Sold', 'Cost of Goods Sold'];
+  if (/other income/.test(T)) return ['Other Income', 'Other Income'];
+  if (/other expense/.test(T)) return ['Other Expense', 'Other Expense'];
+  if (/income|revenue/.test(T)) return ['Income', 'Income'];
+  if (/expense/.test(T)) return ['Expense', 'Expense'];
+  if (/^bank/.test(t)) return ['Asset', 'Bank'];
+  return null;
+}
+function guessTypeFromName(n) {
+  n = n.toLowerCase();
+  if (/receivable/.test(n)) return 'Asset|Accounts Receivable'; if (/payable/.test(n) && !/tax|gst|hst|payroll/.test(n)) return 'Liability|Accounts Payable';
+  if (/visa|mastercard|amex|credit card/.test(n)) return 'Liability|Credit Card'; if (/bank|chequing|checking|savings|cash/.test(n)) return 'Asset|Bank';
+  if (/gst|hst|pst|qst|tax payable|payroll liab|accrued/.test(n)) return 'Liability|Other Current Liability'; if (/loan|mortgage/.test(n)) return 'Liability|Long Term Liability';
+  if (/equity|retained|capital|draw|owner|shareholder/.test(n)) return 'Equity|Equity'; if (/equipment|furniture|computer|vehicle.*asset|depreciation accum/.test(n)) return 'Asset|Fixed Asset';
+  if (/prepaid|deposit paid|inventory|undeposited/.test(n)) return 'Asset|Other Current Asset';
+  if (/cost of goods|cogs|cost of sales/.test(n)) return 'Cost of Goods Sold|Cost of Goods Sold'; if (/interest earned|other income/.test(n)) return 'Other Income|Other Income';
+  if (/revenue|sales|income|fees earned|services/.test(n)) return 'Income|Income'; return 'Expense|Expense';
+}
+const TAXLINE_GUESS = [[/advertis|marketing/, '8521'], [/meal|entertain/, '8523'], [/insur/, '8690'], [/bank (charge|fee)|interest|merchant fee/, '8710'], [/licen|dues|member|subscription/, '8760'],
+  [/office supplies|stationery|supplies/, '8811'], [/office|software|computer/, '8810'], [/legal|accounting|professional|bookkeep/, '8860'], [/rent|lease/, '8910'], [/repair|mainten/, '8960'],
+  [/wage|salar|payroll|benefit/, '9060'], [/travel|airfare|hotel/, '9200'], [/utilit|phone|internet|telephone|hydro|electric/, '9220'], [/vehicle|auto|car |fuel|gas|parking/, '9281'],
+  [/shipping|courier|postage|delivery|freight/, '9275'], [/depreciation|amortization|cca/, '9936']];
+function guessTaxLine(name, type) { if (type === 'Income') return '8000'; if (type === 'Other Income') return '8230'; if (type === 'Cost of Goods Sold') return '8320'; if (type !== 'Expense' && type !== 'Other Expense') return ''; const n = name.toLowerCase(); for (const [re, l] of TAXLINE_GUESS) if (re.test(n)) return l; return '9270'; }
+const cleanName = s => String(s ?? '').replace(/\s+/g, ' ').trim();
+function findAcctByName(n) {
+  const k = cleanName(n).toLowerCase(); if (!k) return null;
+  return db.accounts.find(a => a.name.toLowerCase() === k || acctName(a).toLowerCase() === k || ((a.number || '') + ' ' + a.name).toLowerCase() === k || (a.qbName || '').toLowerCase() === k)
+    // QuickBooks' "Accounts Receivable (A/R)" / "Accounts Payable (A/P)" are OwnBooks' built-in receivable/payable accounts
+    || (/^accounts receivable\b/.test(k) && db.accounts.find(a => a.subtype === 'Accounts Receivable'))
+    || (/^accounts payable\b/.test(k) && db.accounts.find(a => a.subtype === 'Accounts Payable')) || null;
+}
+const isTotalRow = s => /^total\b|^grand total|^net income|^total for /i.test(cleanName(s));
+function obeId() { let a = db.accounts.find(x => x.name === 'Opening Balance Equity'); if (!a) { a = { id: uid(), number: '3900', name: 'Opening Balance Equity', type: 'Equity', subtype: 'Equity', active: true, desc: '', taxLine: '' }; db.accounts.push(a); } return a.id; }
+
+/* ---------- import page ---------- */
+const imp = { sheets: [], cutover: '' };
+function pageImport() {
+  if (!imp.cutover) imp.cutover = fyStart(today());
+  const done = (db.imports || []).slice().reverse();
+  return `<div class="card" style="margin-bottom:12px"><div class="section" style="margin-top:0">Move your books from QuickBooks Online</div>
+    <ol style="margin:0 0 10px;padding-left:20px;line-height:1.7">
+      <li>In QuickBooks Online: <b>⚙ Settings → Export data</b>. Choose <b>Reports</b> and <b>Lists</b>, set the date range to <b>All dates</b>, then <b>Export to Excel</b>. You get one .zip file.</li>
+      <li>Also run these reports and click the <b>Export → Export to Excel</b> button on each (as of the day before your cut-over date): <b>Account List</b>, <b>Trial Balance</b>, <b>A/R Aging Detail</b>, <b>A/P Aging Detail</b>.</li>
+      <li>Drop all the files below. OwnBooks recognizes each one; check the preview, then import them in the order shown.</li></ol>
+    <div class="grid"><div><label for="impcut">Cut-over date (first day in OwnBooks)</label><input type="date" id="impcut" value="${imp.cutover}" onchange="imp.cutover=this.value;render()"></div>
+    <div style="grid-column:span 2"><label>&nbsp;</label><div class="hint">Opening balances are dated ${addDays(imp.cutover, -1)}. Pick the first day of your fiscal year or of a GST/HST period.</div></div></div></div>
+  <label class="drop" id="impdrop" style="display:block;cursor:pointer;margin-bottom:12px" ondragover="event.preventDefault();this.style.borderColor='var(--brand)'" ondragleave="this.style.borderColor=''" ondrop="event.preventDefault();this.style.borderColor='';impFiles([...event.dataTransfer.files])">
+    <b>⬆ Upload files</b><br>Drop QuickBooks exports here, or click to choose — .zip, .xlsx or .csv<input type="file" id="impfile" multiple accept=".zip,.xlsx,.csv,.txt" hidden onchange="impFiles([...this.files]);this.value=''"></label>
+  <div id="impsheets">${imp.sheets.map(sheetCard).join('')}</div>
+  ${imp.sheets.length ? `<div class="row" style="margin-bottom:16px"><button class="primary" onclick="impAll()">Import all ready files in order</button><button onclick="imp.sheets=[];render()">Clear the list</button></div>` : ''}
+  ${importCheckHtml()}
+  ${done.length ? `<div class="section">Past imports</div><div class="tablewrap"><table><tr><th>When</th><th>File</th><th>What</th><th>Result</th><th></th></tr>${done.map(i => `<tr><td>${i.at.slice(0, 16).replace('T', ' ')}</td><td>${esc(i.file)}</td><td>${esc(IMPORT_KINDS[i.kind]?.label || i.kind)}</td><td>${esc(i.summary)}</td><td>${i.undone ? '<span class="pill">undone</span>' : `<button class="sm" onclick="undoImport('${i.id}')">Undo</button>`}</td></tr>`).join('')}</table></div>` : ''}`;
+}
+function sheetCard(s, i) {
+  const K = IMPORT_KINDS[s.kind]; const opt = (sel) => `<option value="-1">— not in file —</option>` + s.head.map((h, k) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${esc(h || 'Column ' + (k + 1))}</option>`).join('');
+  const issues = s.kind ? sheetIssues(s) : [];
+  const preview = s.data.slice(0, 6);
+  return `<div class="card" style="margin-bottom:12px" id="sh_${s.id}"><div class="row"><b style="flex:1">${esc(s.file)}${s.sheet && s.sheet !== s.file ? ' · ' + esc(s.sheet) : ''}</b>
+      <select style="width:auto" onchange="impSetKind(${i},this.value)"><option value="">What is this file? (skip)</option>${Object.entries(IMPORT_KINDS).sort((a, b) => a[1].step - b[1].step).map(([k, v]) => `<option value="${k}" ${k === s.kind ? 'selected' : ''}>${v.step}. ${v.label}</option>`).join('')}</select>
+      <button class="sm" onclick="imp.sheets.splice(${i},1);render()">Remove</button></div>
+    ${s.title ? `<div class="hint">${esc(s.title.slice(0, 160))}</div>` : ''}
+    ${K ? `<div class="grid" style="margin-top:8px">${Object.keys(K.fields).map(f => `<div><label>${esc(f === 'open' ? 'Open balance' : f === 'num' ? 'Number' : f === 'due' ? 'Due date' : f[0].toUpperCase() + f.slice(1))}${K.required.includes(f) ? ' *' : ''}</label><select onchange="imp.sheets[${i}].map['${f}']=+this.value;render()">${opt(s.map[f] ?? -1)}</select></div>`).join('')}
+      ${'date' in K.fields || 'due' in K.fields ? `<div><label>Dates are</label><select onchange="imp.sheets[${i}].order=this.value;render()">${[['ymd', 'YYYY-MM-DD'], ['dmy', 'DD/MM/YYYY'], ['mdy', 'MM/DD/YYYY']].map(([k, l]) => `<option value="${k}" ${s.order === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}</div>
+      ${s.kind === 'tb' ? `<label style="color:var(--ink);display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" style="width:auto" ${s.splitArAp !== false ? 'checked' : ''} onchange="imp.sheets[${i}].splitArAp=this.checked;render()"> I'm also importing open invoices and unpaid bills (so receivable/payable balances come from those, not counted twice)</label>` : ''}
+      ${s.kind === 'journal' ? `<label style="color:var(--ink);display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" style="width:auto" ${s.onlyAfter ? 'checked' : ''} onchange="imp.sheets[${i}].onlyAfter=this.checked;render()"> Only import transactions on or after the cut-over date (use this if you also import the Trial Balance)</label>` : ''}
+      ${missingAcctsHtml(s, i)}
+      ${issues.length ? `<div class="err" style="font-weight:400">${issues.map(esc).join('<br>')}</div>` : ''}` : '<p class="hint">Choose what this file is to import it, or leave it to skip.</p>'}
+    <div class="tablewrap" style="margin-top:8px"><table><tr>${s.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr>${preview.map(r => `<tr>${s.head.map((_, k) => `<td>${esc(r[k] ?? '')}</td>`).join('')}</tr>`).join('')}</table></div>
+    <div class="row" style="margin-top:8px">${K ? `<button class="primary" ${issues.some(x => x.startsWith('Required')) ? 'disabled' : ''} onclick="impRun(${i})">Import ${impCount(s)} ${s.kind === 'journal' ? 'transactions' : 'rows'}</button>` : ''}<span class="hint">${s.data.length} rows in file</span></div></div>`;
+}
+const cell = (s, r, f) => s.map[f] >= 0 && s.map[f] != null ? r[s.map[f]] : '';
+function impRows(s) {
+  const K = IMPORT_KINDS[s.kind]; if (!K) return [];
+  return s.data.filter(r => { if (!r.some(c => String(c).trim() !== '')) return false; const first = r.find(c => String(c).trim() !== '');
+    if (isTotalRow(first)) return false;
+    if (s.kind === 'ar' || s.kind === 'ap') return !!impDate(cell(s, r, 'date'), s.order) && money(cell(s, r, 'open')) !== 0;
+    if (s.kind === 'tb') return cleanName(cell(s, r, 'account')) && (money(cell(s, r, 'debit')) || money(cell(s, r, 'credit')));
+    if (s.kind === 'journal') return !!cleanName(cell(s, r, 'account'));
+    if (r.filter(c => String(c).trim() !== '').length < 2 && /\b(accrual|cash) basis\b|gmt[+-]|\b\d{1,2}:\d{2}\s?(am|pm)\b/i.test(String(first))) return false; // report footer ("Accrual Basis Thursday … 09:15 AM")
+    if (s.kind === 'accounts' && !cleanName(cell(s, r, 'type'))) return false;
+    return !!cleanName(cell(s, r, 'name')); });
+}
+function impCount(s) { return s.kind === 'journal' ? groupJournal(s).filter(g => g.ok).length : impRows(s).length; }
+function sheetIssues(s) {
+  const K = IMPORT_KINDS[s.kind], out = [];
+  const miss = K.required.filter(f => !(s.map[f] >= 0)); if (miss.length) out.push('Required column not matched: ' + miss.join(', ') + ' — choose it above.');
+  if (s.kind === 'accounts') { const bad = impRows(s).filter(r => !mapQBType(cell(s, r, 'type'), cell(s, r, 'detail'))); if (bad.length) out.push(`${bad.length} account(s) have a type OwnBooks doesn't recognize; they'll be imported as Expense accounts — fix them in Chart of Accounts.`); }
+  if (s.kind === 'tb') { let d = 0, c = 0; impRows(s).forEach(r => { d += money(cell(s, r, 'debit')); c += money(cell(s, r, 'credit')); }); if (Math.abs(r2(d - c)) > 0.009) out.push(`Debits (${fmt(d)}) and credits (${fmt(c)}) differ by ${fmt(d - c)}; the difference will go to Opening Balance Equity.`); }
+  if (s.kind === 'journal') { const bad = groupJournal(s).filter(g => !g.ok).length; if (bad) out.push(`${bad} transaction(s) don't balance and will be skipped.`); if (s.head.some(h => normH(h) === 'split')) out.push('This looks like the General Ledger report, which lists each transaction more than once. Use the Journal report instead.'); }
+  return out;
+}
+function neededAccounts(s) {
+  if (!['tb', 'journal'].includes(s.kind) || !(s.map.account >= 0)) return [];
+  const queued = new Set(imp.sheets.filter(x => x.kind === 'accounts' && x !== s).flatMap(x => impRows(x).map(r => cleanName(cell(x, r, 'name')).toLowerCase())));
+  const names = new Set(); impRows(s).forEach(r => { const n = cleanName(cell(s, r, 'account')); if (n && !findAcctByName(n) && !queued.has(n.toLowerCase())) names.add(n); }); return [...names];
+}
+const TYPE_CHOICES = TYPES.flatMap(t => SUBTYPES[t].map(st => t + '|' + st));
+function missingAcctsHtml(s, i) {
+  const need = neededAccounts(s); if (!need.length) return '';
+  s.typeFor = s.typeFor || {};
+  return `<div class="section">${need.length} account(s) aren't in OwnBooks yet — check the type for each (or import the Account List first)</div><div class="tablewrap"><table>${need.map(n => { const v = s.typeFor[n] || (s.typeFor[n] = guessTypeFromName(n));
+    return `<tr><td>${esc(n)}</td><td style="width:280px"><select onchange="imp.sheets[${i}].typeFor[${esc(JSON.stringify(n))}]=this.value">${TYPE_CHOICES.map(c => `<option value="${c}" ${c === v ? 'selected' : ''}>${c.replace('|', ' — ')}</option>`).join('')}</select></td></tr>`; }).join('')}</table></div>`;
+}
+function groupJournal(s) {
+  const groups = []; let cur = null;
+  const bal = g => { const d = r2(g.lines.reduce((a, l) => a + l.debit, 0)), c = r2(g.lines.reduce((a, l) => a + l.credit, 0)); return d > 0 && d === c; };
+  for (const r of s.data) {
+    const first = r.find(c => String(c).trim() !== ''); if (first == null || isTotalRow(first)) continue;
+    const date = impDate(cell(s, r, 'date'), s.order), acc = cleanName(cell(s, r, 'account'));
+    const key = [date, cleanName(cell(s, r, 'type')), cleanName(cell(s, r, 'num')), cleanName(cell(s, r, 'name'))].join('|');
+    if (date && (!cur || key !== cur.key || bal(cur))) { cur = { key, date, type: cleanName(cell(s, r, 'type')), num: cleanName(cell(s, r, 'num')), name: cleanName(cell(s, r, 'name')), lines: [] }; groups.push(cur); }
+    if (!cur || !acc) continue;
+    let d = money(cell(s, r, 'debit')), c = money(cell(s, r, 'credit')); if (d < 0) { c -= d; d = 0; } if (c < 0) { d -= c; c = 0; }
+    if (d || c) cur.lines.push({ account: acc, desc: cleanName(cell(s, r, 'memo')) || cleanName(cell(s, r, 'name')), debit: r2(d), credit: r2(c), name: cleanName(cell(s, r, 'name')) });
+  }
+  groups.forEach(g => g.ok = bal(g));
+  return groups;
+}
+async function impFiles(files) {
+  for (const f of files) {
+    try {
+      const lower = f.name.toLowerCase();
+      if (lower.endsWith('.xls')) { alert(`${f.name}: old .xls files can't be read. In QuickBooks choose "Export to Excel" (.xlsx) or CSV.`); continue; }
+      if (lower.endsWith('.zip')) { const z = await unzip(await f.arrayBuffer());
+        for (const [n, get] of Object.entries(z)) { const ln = n.toLowerCase(); if (ln.includes('__macosx')) continue;
+          const base = n.split('/').pop(); const bytes = await get();
+          if (ln.endsWith('.xlsx')) (await readXlsx(bytes.slice().buffer)).forEach(sh => addSheet(base, sh.sheet, sh.rows));
+          else if (ln.endsWith('.csv')) addSheet(base, '', parseCSV(new TextDecoder().decode(bytes))); }
+      } else if (lower.endsWith('.xlsx')) (await readXlsx(await f.arrayBuffer())).forEach(sh => addSheet(f.name, sh.sheet, sh.rows));
+      else addSheet(f.name, '', parseCSV(await f.text()));
+    } catch (e) { alert(`Couldn't read ${f.name}: ${e.message}`); }
+  }
+  imp.sheets.sort((a, b) => (IMPORT_KINDS[a.kind]?.step || 99) - (IMPORT_KINDS[b.kind]?.step || 99));
+  render();
+}
+function addSheet(file, sheet, rows) {
+  rows = rows.map(r => (r || []).map(c => typeof c === 'string' ? c.replace(/^﻿/, '') : c));
+  const h = findHeader(rows); if (h < 0 && rows.length < 2) return;
+  const hi = h < 0 ? 0 : h; const head = (rows[hi] || []).map(c => cleanName(c)); const H = head.map(normH);
+  const title = rows.slice(0, hi).map(r => r.filter(Boolean).join(' ')).filter(Boolean).join(' · ');
+  const kind = detectKind(H, title + ' ' + file + ' ' + sheet);
+  const s = { id: uid(), file, sheet, title, head, data: rows.slice(hi + 1), kind, map: kind ? autoMap(kind, H) : {}, order: 'ymd', splitArAp: true, onlyAfter: !!(db.imports || []).some(x => x.kind === 'tb' && !x.undone) };
+  const dcol = s.map.date ?? s.map.due; if (dcol >= 0) s.order = guessDateOrder(s.data.map(r => r[dcol]).filter(v => typeof v === 'string'));
+  if (!kind && !rows.some(r => r.length > 1)) return;
+  imp.sheets.push(s);
+}
+function impSetKind(i, k) { const s = imp.sheets[i]; s.kind = k; s.map = k ? autoMap(k, s.head.map(normH)) : {}; const dcol = s.map.date ?? s.map.due; if (dcol >= 0) s.order = guessDateOrder(s.data.map(r => r[dcol]).filter(v => typeof v === 'string')); render(); }
+
+/* ---------- running an import ---------- */
+function ensureAccount(name, typeFor, batch) {
+  let a = findAcctByName(name); if (a) return a.id;
+  const [type, subtype] = (typeFor[name] || guessTypeFromName(name)).split('|');
+  a = { id: uid(), number: '', name: cleanName(name), type, subtype, active: true, desc: 'Imported from QuickBooks', taxLine: guessTaxLine(name, type), importBatch: batch };
+  db.accounts.push(a); return a.id;
+}
+function ensureParty(kind, name, batch) {
+  const list = kind === 'vendor' ? db.vendors : db.customers; const k = cleanName(name).toLowerCase();
+  let p = list.find(x => x.name.toLowerCase() === k); if (p) return p.id;
+  p = { id: uid(), name: cleanName(name), active: true, custom: {}, created: nowISO(), importBatch: batch }; list.push(p); return p.id;
+}
+function impRun(i, quiet) {
+  const s = imp.sheets[i]; if (!s || !s.kind) return; const batch = 'imp_' + uid(); const res = runImport(s, batch);
+  db.imports = db.imports || []; db.imports.push({ id: batch, at: nowISO(), file: s.file + (s.sheet && s.sheet !== s.file ? ' · ' + s.sheet : ''), kind: s.kind, summary: res });
+  log('import', batch, 'imported', null, { file: s.file, kind: s.kind, summary: res });
+  imp.sheets.splice(i, 1); save(); if (!quiet) { render(); toast(IMPORT_KINDS[s.kind].label + ': ' + res); }
+  return res;
+}
+function impAll() {
+  const ready = imp.sheets.filter(s => s.kind && !sheetIssues(s).some(x => x.startsWith('Required'))).sort((a, b) => IMPORT_KINDS[a.kind].step - IMPORT_KINDS[b.kind].step);
+  const msgs = ready.map(s => IMPORT_KINDS[s.kind].label + ': ' + impRun(imp.sheets.indexOf(s), true));
+  render(); alert(msgs.join('\n') || 'Nothing ready to import.');
+}
+function runImport(s, batch) {
+  const rows = impRows(s); let added = 0, skipped = 0;
+  const T = (o) => { db.txns.push(Object.assign({ id: uid(), custom: {}, created: nowISO(), updated: nowISO(), importBatch: batch }, o)); added++; };
+  const exists = key => db.txns.some(t => t.importKey === key);
+  switch (s.kind) {
+    case 'accounts': {
+      for (const r of rows) {
+        const name = cleanName(cell(s, r, 'name')); if (findAcctByName(name)) { skipped++; continue; }
+        const [type, subtype] = mapQBType(cell(s, r, 'type'), cell(s, r, 'detail')) || ['Expense', 'Expense'];
+        db.accounts.push({ id: uid(), number: cleanName(cell(s, r, 'number')), name, type, subtype, active: true, desc: cleanName(cell(s, r, 'description')), taxLine: guessTaxLine(name, type), qbName: name, importBatch: batch }); added++;
+      }
+      return `${added} accounts added${skipped ? `, ${skipped} already existed` : ''}`;
+    }
+    case 'customers': case 'vendors': {
+      const list = s.kind === 'vendors' ? db.vendors : db.customers;
+      for (const r of rows) {
+        const name = cleanName(cell(s, r, 'name')); if (list.some(p => p.name.toLowerCase() === name.toLowerCase())) { skipped++; continue; }
+        const p = { id: uid(), name, active: true, custom: {}, created: nowISO(), importBatch: batch };
+        for (const f of ['company', 'email', 'phone', 'address', 'taxNumber', 'notes']) { const v = String(cell(s, r, f) ?? '').trim(); if (v) p[f] = f === 'address' ? v : cleanName(v); }
+        list.push(p); added++;
+      }
+      return `${added} ${s.kind === 'vendors' ? 'vendors' : 'clients'} added${skipped ? `, ${skipped} already existed` : ''}`;
+    }
+    case 'tb': {
+      const date = addDays(imp.cutover, -1); if (exists('tb|' + date)) return 'Skipped — opening balances for this date were already imported (undo the earlier import first).';
+      const lines = []; const OBE = obeId(); let diff = 0;
+      for (const r of rows) {
+        const id = ensureAccount(cell(s, r, 'account'), s.typeFor || {}, batch); const a = acct(id);
+        const d = r2(money(cell(s, r, 'debit'))), c = r2(money(cell(s, r, 'credit')));
+        const route = s.splitArAp !== false && (a.subtype === 'Accounts Receivable' || a.subtype === 'Accounts Payable');
+        lines.push({ accountId: route ? OBE : id, desc: route ? `${a.name} (rebuilt from open invoices/bills)` : 'Opening balance', debit: d, credit: c });
+        diff = r2(diff + d - c);
+      }
+      if (diff) lines.push({ accountId: OBE, desc: 'Rounding / difference in trial balance', debit: diff < 0 ? -diff : 0, credit: diff > 0 ? diff : 0 });
+      T({ type: 'journal', date, num: 'OPENING', memo: 'Opening balances imported from QuickBooks trial balance', lines, importKey: 'tb|' + date });
+      return `opening balance entry created on ${date} with ${lines.length} lines`;
+    }
+    case 'ar': case 'ap': {
+      const OBE = obeId(), kind = s.kind === 'ar' ? 'customer' : 'vendor';
+      for (const r of rows) {
+        const date = impDate(cell(s, r, 'date'), s.order), open = r2(money(cell(s, r, 'open'))), num = cleanName(cell(s, r, 'num')), name = cleanName(cell(s, r, 'name')), typ = cleanName(cell(s, r, 'type')) || (s.kind === 'ar' ? 'Invoice' : 'Bill');
+        const key = `${s.kind}|${date}|${num}|${name.toLowerCase()}|${open}`; if (exists(key)) { skipped++; continue; }
+        const t = { type: s.kind === 'ar' ? 'invoice' : 'bill', date, dueDate: impDate(cell(s, r, 'due'), s.order) || date, num, partyId: ensureParty(kind, name, batch), tax: 0, importKey: key,
+          memo: `Imported from QuickBooks — ${typ}${num ? ' ' + num : ''} (open balance at cut-over)`, lines: [{ accountId: OBE, desc: `${typ}${num ? ' #' + num : ''} — balance carried over from QuickBooks`, qty: 1, rate: open, amount: open }] };
+        T(t);
+      }
+      return `${added} open ${s.kind === 'ar' ? 'invoice' : 'bill'}${added === 1 ? '' : 's'} added${skipped ? `, ${skipped} already imported` : ''}`;
+    }
+    case 'journal': {
+      let bad = 0, before = 0;
+      for (const g of groupJournal(s)) {
+        if (!g.ok) { bad++; continue; } if (s.onlyAfter && g.date < imp.cutover) { before++; continue; }
+        const key = `j|${g.date}|${g.type}|${g.num}|${g.name}|${g.lines.map(l => l.account + l.debit + '/' + l.credit).join(',')}`; if (exists(key)) { skipped++; continue; }
+        T({ type: 'journal', date: g.date, num: g.num, memo: [g.type, g.name].filter(Boolean).join(' — '), importKey: key, qbType: g.type,
+          lines: g.lines.map(l => ({ accountId: ensureAccount(l.account, s.typeFor || {}, batch), desc: l.desc, debit: l.debit, credit: l.credit })) });
+      }
+      return `${added} transactions added${skipped ? `, ${skipped} already imported` : ''}${before ? `, ${before} before cut-over skipped` : ''}${bad ? `, ${bad} unbalanced skipped` : ''}`;
+    }
+  }
+}
+function undoImport(id) {
+  const rec = (db.imports || []).find(x => x.id === id); if (!rec || !confirm('Remove everything this import added?')) return;
+  const nT = db.txns.length; db.txns = db.txns.filter(t => t.importBatch !== id);
+  const used = new Set(db.txns.flatMap(t => postings(t).map(p => p.accountId))); const usedP = new Set(db.txns.map(t => t.partyId));
+  db.accounts = db.accounts.filter(a => a.importBatch !== id || used.has(a.id));
+  db.customers = db.customers.filter(p => p.importBatch !== id || usedP.has(p.id)); db.vendors = db.vendors.filter(p => p.importBatch !== id || usedP.has(p.id));
+  rec.undone = true; log('import', id, 'undone', rec, null); save(); render(); toast(`Undone — removed ${nT - db.txns.length} transactions and the names/accounts it created.`);
+}
+function importCheckHtml() {
+  if (!(db.imports || []).some(i => !i.undone)) return '';
+  const d = addDays(imp.cutover, -1); const b = balances(null, d); const tot = { dr: 0, cr: 0 };
+  db.accounts.forEach(a => { const x = b[a.id]; if (!x) return; const n = r2(x.dr - x.cr); if (n > 0) tot.dr += n; else tot.cr -= n; });
+  const sub = st => r2(db.accounts.filter(a => a.subtype === st).reduce((s, a) => s + natural(a, b[a.id]), 0));
+  const banks = db.accounts.filter(isBankish).map(a => [a, natural(a, b[a.id])]).filter(x => x[1]);
+  return `<div class="card" style="margin-bottom:16px"><div class="section" style="margin-top:0">Check against QuickBooks (as of ${d})</div>
+    <p class="hint">These numbers should match the same reports in QuickBooks for ${d}. If they do, your books moved over correctly.</p>
+    <div class="tablewrap"><table><tr><th>Item</th><th class="num">OwnBooks</th></tr>
+    <tr><td>Trial balance — total debits</td><td class="num">${fmt(tot.dr)}</td></tr><tr><td>Trial balance — total credits</td><td class="num">${fmt(tot.cr)}</td></tr>
+    <tr><td>Accounts receivable (A/R Aging total)</td><td class="num">${fmt(sub('Accounts Receivable'))}</td></tr><tr><td>Accounts payable (A/P Aging total)</td><td class="num">${fmt(sub('Accounts Payable'))}</td></tr>
+    ${banks.map(([a, v]) => `<tr><td>${esc(a.name)}</td><td class="num">${fmt(v)}</td></tr>`).join('')}
+    <tr><td>Opening Balance Equity (should normally be ${fmt(0)} or close)</td><td class="num">${fmt(natural(acct(obeId()), b[obeId()]))}</td></tr></table></div>
+    <div class="row" style="margin-top:8px"><button onclick="runReport('tb',{to:'${d}'})">Open full trial balance</button><button onclick="runReport('bs',{to:'${d}'})">Open balance sheet</button></div></div>`;
+}
+
 /* ---------- receipts gallery ---------- */
 function pageReceipts() { return `<div class="row" style="margin-bottom:12px"><button class="primary" onclick="snapReceipt()">📷 Snap a receipt</button><span class="hint">Photos are compressed and stored on this device, attached to the transaction.</span></div><div class="receipts" id="gallery">Loading…</div>`; }
 pageReceipts.after = async () => {
@@ -1419,7 +1787,7 @@ pageReceipts.after = async () => {
 /* ---------- change history ---------- */
 function histLabel(e, o) {
   if (!o) return ''; if (e === 'txn') return `${TT[o.type]?.label || o.type} ${o.num ? '#' + o.num : ''} · ${o.date} · ${fmt(txTotal(o))}${o.void ? ' (void)' : ''}`;
-  if (e === 'account') return acctName(o); if (e === 'settings') return 'Company settings'; return o.name || o.text || '';
+  if (e === 'account') return acctName(o); if (e === 'settings') return 'Company settings'; if (e === 'import') return `${o.file}: ${o.summary}`; return o.name || o.text || '';
 }
 function diffText(a, b) {
   if (!a || !b) return ''; const out = []; const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
@@ -1432,7 +1800,7 @@ function pageHistory() {
   <p class="hint">Every create, edit and delete is recorded. You can freely change past entries — and restore any earlier version here.</p>
   <div class="tablewrap"><table><thead><tr><th>When</th><th>What</th><th>Action</th><th>Record</th><th></th></tr></thead><tbody>
   ${list.map(h => `<tr><td style="white-space:nowrap">${h.at.slice(0, 16).replace('T', ' ')}</td><td>${h.entity}</td><td>${h.action}</td><td>${esc(histLabel(h.entity, h.after || h.before))}${h.before && h.after ? `<details><summary class="hint">what changed</summary><div class="diff">${esc(diffText(h.before, h.after))}</div></details>` : ''}</td>
-  <td style="white-space:nowrap">${h.before ? `<button class="sm" onclick="restoreHist('${h.id}','before')" title="Put the record back the way it was before this change">Undo this change</button>` : `<button class="sm" onclick="restoreHist('${h.id}','before')">Undo (remove)</button>`}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No history yet.</td></tr>'}
+  <td style="white-space:nowrap">${h.entity === 'import' ? `<a href="#import">Undo on Import page</a>` : h.before ? `<button class="sm" onclick="restoreHist('${h.id}','before')" title="Put the record back the way it was before this change">Undo this change</button>` : `<button class="sm" onclick="restoreHist('${h.id}','before')">Undo (remove)</button>`}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No history yet.</td></tr>'}
   </tbody></table></div>`;
 }
 function restoreHist(hid, which) {
