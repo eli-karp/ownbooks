@@ -18,6 +18,16 @@ Stored in the browser's IndexedDB on that device. **Settings → Download full b
 ## Develop
 Edit files in `src/`, then run `python3 build.py`.
 
+## LeviLex (time, billing & trust) → OwnBooks
+LeviLex stays the system of record for time, matters, invoices and trust (By-Law 9). OwnBooks takes the place QuickBooks had:
+Import Data → **LeviLex** → enter the LeviLex address and API token (`[integrations] api_token` in lexledger.toml) → **Sync with LeviLex**.
+- Clients → clients; matters → projects (e.g. "2026-014 — Share purchase"), so each matter has its own P&L.
+- Delivered invoices → invoices (fee lines to the fees account, disbursement lines to "Disbursements Recovered", HST to GST/HST Payable). Voided in LeviLex → voided here.
+- Payments, including transfers from trust → payments applied to the invoice, deposited to the account you choose.
+- Expenses/bills ticked **Bill to client in LeviLex** with lines tagged to a matter → sent to LeviLex once as disbursements.
+- No connection? LeviLex's **Export for OwnBooks** file can be dropped on the Import Data page instead. Syncing again never duplicates.
+Needs LeviLex's `GET /api/ownbooks/export` endpoint (being added in the LeviLex repository).
+
 ## Moving from QuickBooks Online (Import Data page)
 1. In QuickBooks Online: **⚙ Settings → Export data** → Reports + Lists, All dates → Export to Excel (one .zip).
 2. Also export (Export → Export to Excel) as of the day before your cut-over date: **Account List**, **Trial Balance**, **A/R Aging Detail**, **A/P Aging Detail**.

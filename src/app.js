@@ -406,6 +406,8 @@ function openTx(type, t, preset = {}) {
     ${head}${lines}${taxHtml}
     <div class="totals" id="totals"></div>
     <div class="grid" style="margin-top:12px"><div style="grid-column:1/-1"><label>Memo / notes</label><textarea name="memo">${esc(t.memo)}</textarea></div></div>
+    ${(type === 'expense' || type === 'bill') && db.projects.some(p => p.levilexId) ? `<div style="margin-top:12px"><label style="color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" name="billToClient" style="width:auto" ${t.billToClient ? 'checked' : ''}> Bill to client in LeviLex (lines tagged with a matter are sent as disbursements on the next sync)</label>${(t.lines || []).some(l => l.levilexExpenseId) ? '<p class="hint">Already sent to LeviLex — change or remove it there.</p>' : ''}</div>` : ''}
+    ${t.levilexId ? '<p class="hint" style="color:var(--warn)">This invoice comes from LeviLex. Make changes in LeviLex — the next sync replaces edits made here.</p>' : ''}
     ${customFieldsHtml(type, t.custom)}
     ${cfg.receipts ? receiptsHtml(t.id) : ''}
     ${!isNew ? `<div style="margin-top:12px"><label style="color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" name="void" style="width:auto" ${t.void ? 'checked' : ''}> Void this transaction (kept on record, zero effect on books)</label></div>
@@ -489,6 +491,7 @@ function saveTx(andNew) {
     }
   }
   t.custom = readCustom(f); if (E.void) t.void = E.void.checked; t.updated = nowISO();
+  if (E.billToClient) t.billToClient = E.billToClient.checked;
   if (!t.date) return err('Date is required.');
   if (cfg.party && !cfg.partyOptional && !t.partyId) return err(`Choose a ${cfg.party === 'vendor' ? 'vendor' : 'client'}.`);
   if (cfg.bank && !t.bankAccountId) return err(`Choose the "${cfg.bank}" account.`);
@@ -1438,7 +1441,7 @@ const imp = { sheets: [], cutover: '' };
 function pageImport() {
   if (!imp.cutover) imp.cutover = fyStart(today());
   const done = (db.imports || []).slice().reverse();
-  return `<div class="card" style="margin-bottom:12px"><div class="section" style="margin-top:0">Move your books from QuickBooks Online</div>
+  return levilexCardHtml() + `<div class="card" style="margin-bottom:12px"><div class="section" style="margin-top:0">Move your books from QuickBooks Online</div>
     <ol style="margin:0 0 10px;padding-left:20px;line-height:1.7">
       <li>In QuickBooks Online: <b>⚙ Settings → Export data</b>. Choose <b>Reports</b> and <b>Lists</b>, set the date range to <b>All dates</b>, then <b>Export to Excel</b>. You get one .zip file.</li>
       <li>Also run these reports and click the <b>Export → Export to Excel</b> button on each (as of the day before your cut-over date): <b>Account List</b>, <b>Trial Balance</b>, <b>A/R Aging Detail</b>, <b>A/P Aging Detail</b>.</li>
@@ -1446,7 +1449,7 @@ function pageImport() {
     <div class="grid"><div><label for="impcut">Cut-over date (first day in OwnBooks)</label><input type="date" id="impcut" value="${imp.cutover}" onchange="imp.cutover=this.value;render()"></div>
     <div style="grid-column:span 2"><label>&nbsp;</label><div class="hint">Opening balances are dated ${addDays(imp.cutover, -1)}. Pick the first day of your fiscal year or of a GST/HST period.</div></div></div></div>
   <label class="drop" id="impdrop" style="display:block;cursor:pointer;margin-bottom:12px" ondragover="event.preventDefault();this.style.borderColor='var(--brand)'" ondragleave="this.style.borderColor=''" ondrop="event.preventDefault();this.style.borderColor='';impFiles([...event.dataTransfer.files])">
-    <b>⬆ Upload files</b><br>Drop QuickBooks exports here, or click to choose — .zip, .xlsx or .csv<input type="file" id="impfile" multiple accept=".zip,.xlsx,.csv,.txt" hidden onchange="impFiles([...this.files]);this.value=''"></label>
+    <b>⬆ Upload files</b><br>Drop QuickBooks exports or a LeviLex export here, or click to choose — .zip, .xlsx, .csv or .json<input type="file" id="impfile" multiple accept=".zip,.xlsx,.csv,.txt,.json" hidden onchange="impFiles([...this.files]);this.value=''"></label>
   <div id="impsheets">${imp.sheets.map(sheetCard).join('')}</div>
   ${imp.sheets.length ? `<div class="row" style="margin-bottom:16px"><button class="primary" onclick="impAll()">Import all ready files in order</button><button onclick="imp.sheets=[];render()">Clear the list</button></div>` : ''}
   ${importCheckHtml()}
@@ -1521,6 +1524,9 @@ async function impFiles(files) {
   for (const f of files) {
     try {
       const lower = f.name.toLowerCase();
+      if (lower.endsWith('.json')) { const d = JSON.parse(await f.text());
+        if (d.format !== 'levilex-ownbooks') { alert(`${f.name} isn't a LeviLex export. (To restore an OwnBooks backup, use Settings & Data → Restore.)`); continue; }
+        const res = applyLevilex(d); LX().lastSync = nowISO(); LX().lastResult = res + ' (from file)'; save(); alert('LeviLex: ' + res); continue; }
       if (lower.endsWith('.xls')) { alert(`${f.name}: old .xls files can't be read. In QuickBooks choose "Export to Excel" (.xlsx) or CSV.`); continue; }
       if (lower.endsWith('.zip')) { const z = await unzip(await f.arrayBuffer());
         for (const [n, get] of Object.entries(z)) { const ln = n.toLowerCase(); if (ln.includes('__macosx')) continue;
@@ -1653,6 +1659,117 @@ function importCheckHtml() {
     ${banks.map(([a, v]) => `<tr><td>${esc(a.name)}</td><td class="num">${fmt(v)}</td></tr>`).join('')}
     <tr><td>Opening Balance Equity (should normally be ${fmt(0)} or close)</td><td class="num">${fmt(natural(acct(obeId()), b[obeId()]))}</td></tr></table></div>
     <div class="row" style="margin-top:8px"><button onclick="runReport('tb',{to:'${d}'})">Open full trial balance</button><button onclick="runReport('bs',{to:'${d}'})">Open balance sheet</button></div></div>`;
+}
+
+/* ---------- LeviLex (time, billing & trust) → OwnBooks ----------
+   LeviLex stays the system of record for time, matters, invoices and trust (By-Law 9).
+   OwnBooks receives what QuickBooks used to: clients, matters (as projects), delivered invoices and payments,
+   and sends back costs marked "bill to client" as LeviLex disbursements. */
+const LX = () => db.meta.levilex || (db.meta.levilex = {});
+function lxToken() { try { return localStorage.getItem('ownbooks-levilex-token') || ''; } catch (e) { return ''; } }
+function lxSetToken(v) { try { localStorage.setItem('ownbooks-levilex-token', (v || '').trim()); } catch (e) { } }
+function lxUrl() { return (LX().url || '').trim().replace(/\/+$/, ''); }
+function lxAccounts() {
+  const L = LX(); const by = (pred) => db.accounts.filter(a => a.active && pred(a)).sort(byNum)[0];
+  if (!acct(L.feesAccountId)) L.feesAccountId = (db.accounts.find(a => /legal fees|professional fees/i.test(a.name) && a.type === 'Income') || by(a => a.type === 'Income') || {}).id;
+  if (!acct(L.disbAccountId)) { let a = db.accounts.find(a => /disbursements? recovered/i.test(a.name));
+    if (!a) { a = { id: uid(), number: '4050', name: 'Disbursements Recovered', type: 'Income', subtype: 'Income', active: true, desc: 'Client disbursements billed through LeviLex', taxLine: '8000' }; db.accounts.push(a); }
+    L.disbAccountId = a.id; }
+  if (!acct(L.depositAccountId)) L.depositAccountId = (by(a => a.subtype === 'Bank') || {}).id;
+  return L;
+}
+function levilexCardHtml() {
+  const L = lxAccounts();
+  return `<div class="card" style="margin-bottom:12px"><div class="section" style="margin-top:0">LeviLex — time, billing & trust</div>
+    <p class="hint" style="margin-top:0">LeviLex sends its clients, matters, invoices and payments here (matters become projects). Trust records stay in LeviLex. Costs you mark “Bill to client in LeviLex” are sent there as disbursements.</p>
+    <div class="grid">
+      <div style="grid-column:span 2"><label for="lxurl">LeviLex address</label><input id="lxurl" value="${esc(L.url || '')}" placeholder="https://levilex.yourfirm.ca" onchange="LX().url=this.value.trim();save()"></div>
+      <div><label for="lxtok">LeviLex API token</label><input id="lxtok" type="password" value="${esc(lxToken())}" autocomplete="off" onchange="lxSetToken(this.value)"></div>
+      <div><label>Fees go to</label><select onchange="LX().feesAccountId=this.value;save()">${acctOptions(L.feesAccountId, a => a.type.includes('Income'))}</select></div>
+      <div><label>Disbursements billed go to</label><select onchange="LX().disbAccountId=this.value;save()">${acctOptions(L.disbAccountId, a => PL_TYPES.has(a.type))}</select></div>
+      <div><label>Payments deposited to</label><select onchange="LX().depositAccountId=this.value;save()">${acctOptions(L.depositAccountId, a => isBankish(a) || a.subtype === 'Other Current Asset')}</select></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="primary" onclick="lxSync()">⟳ Sync with LeviLex</button>
+      <span class="hint">${L.lastSync ? 'Last sync ' + esc(L.lastSync.slice(0, 16).replace('T', ' ')) + (L.lastResult ? ' — ' + esc(L.lastResult) : '') : 'Not synced yet'}. No connection? In LeviLex click “Export for OwnBooks” and drop the file in the upload box below.</span></div></div>`;
+}
+async function lxFetch(path, opts = {}) {
+  const url = lxUrl(); if (!url) throw new Error('Enter your LeviLex address first.');
+  if (!lxToken()) throw new Error('Enter the LeviLex API token (in LeviLex: lexledger.toml → [integrations] api_token).');
+  let r; try { r = await fetch(url + path, { ...opts, headers: { 'Authorization': 'Bearer ' + lxToken(), ...(opts.body ? { 'Content-Type': 'application/json' } : {}) } }); }
+  catch (e) { throw new Error(`Couldn't reach LeviLex at ${url}. Check the address and your internet connection. (If the address is right, LeviLex may not allow OwnBooks yet — it needs the OwnBooks export update.)`); }
+  if (r.status === 401) throw new Error('LeviLex refused the API token. Check it matches [integrations] api_token in lexledger.toml.');
+  if (r.status === 404) throw new Error('This LeviLex version has no OwnBooks export yet. Update LeviLex, or use “Export for OwnBooks” when available.');
+  if (!r.ok) throw new Error(`LeviLex answered ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  return r.json();
+}
+async function lxSync() {
+  try {
+    const sent = await lxPushCosts();
+    const data = await lxFetch('/api/ownbooks/export');
+    const res = applyLevilex(data) + (sent ? `; ${sent} cost(s) sent to LeviLex` : '');
+    LX().lastSync = nowISO(); LX().lastResult = res; save(); render(); toast('LeviLex: ' + res);
+  } catch (e) { alert(e.message); }
+}
+/* Apply a LeviLex export (from the live sync or an uploaded file). Safe to run repeatedly. */
+function applyLevilex(d) {
+  if (!d || d.format !== 'levilex-ownbooks') throw new Error('This is not a LeviLex export file.');
+  if (+d.version > 1) throw new Error('This LeviLex export is newer than this OwnBooks understands. Update OwnBooks.');
+  const L = lxAccounts(); const c = n => r2((+n || 0) / 100); const cnt = { clients: 0, matters: 0, inv: 0, invUpd: 0, pay: 0, voided: 0 };
+  const hst = db.meta.taxRates.find(r => +r.rate === 13);
+  const cust = {}, proj_ = {}, invMap = {};
+  for (const x of d.clients || []) {
+    let p = db.customers.find(p => p.levilexId === x.id) || db.customers.find(p => !p.levilexId && p.name.toLowerCase() === String(x.name).toLowerCase());
+    if (!p) { p = { id: uid(), name: x.name, email: x.email || '', address: x.address || '', active: true, custom: {}, created: nowISO(), levilexId: x.id }; db.customers.push(p); cnt.clients++; }
+    else { p.levilexId = x.id; if (!p.email && x.email) p.email = x.email; if (!p.address && x.address) p.address = x.address; }
+    cust[x.id] = p.id;
+  }
+  for (const m of d.matters || []) {
+    const name = `${m.number} — ${m.description || ''}`.replace(/ — $/, '');
+    let p = db.projects.find(p => p.levilexId === m.id);
+    if (!p) { p = { id: uid(), name, customerId: cust[m.client_id] || '', status: m.status === 'closed' ? 'closed' : 'active', levilexId: m.id, created: nowISO() }; db.projects.push(p); cnt.matters++; }
+    else { p.name = name; p.customerId = cust[m.client_id] || p.customerId; p.status = m.status === 'closed' ? 'closed' : (p.status === 'closed' ? 'active' : p.status); }
+    proj_[m.id] = p.id;
+  }
+  for (const v of d.invoices || []) {
+    if (v.status === 'draft') continue;
+    const existing = db.txns.find(t => t.levilexId === v.id && t.type === 'invoice');
+    const pid = proj_[v.matter_id] || '', partyId = existing?.partyId || cust[(d.matters || []).find(m => m.id === v.matter_id)?.client_id] || '';
+    const lines = (v.lines || []).map(l => ({ accountId: l.kind === 'fee' ? L.feesAccountId : L.disbAccountId,
+      desc: [l.date, l.description].filter(Boolean).join(' · ') + (l.no_charge ? ' (no charge)' : ''),
+      qty: l.minutes ? r2(l.minutes / 60) : 1, rate: l.minutes && l.rate_cents ? c(l.rate_cents) : c(l.amount_cents), amount: c(l.amount_cents), projectId: pid }));
+    const want = r2(c(v.fees_cents) + c(v.disbursements_cents)), have = r2(lines.reduce((s, l) => s + l.amount, 0));
+    if (!lines.length || Math.abs(want - have) > 0.004) lines.push({ accountId: L.feesAccountId, desc: lines.length ? 'Adjustment to match LeviLex invoice total' : 'Legal services (LeviLex invoice)', qty: 1, rate: r2(want - have), amount: r2(want - have), projectId: pid });
+    const t = Object.assign(existing ? clone(existing) : { id: uid(), type: 'invoice', created: nowISO(), custom: {} }, {
+      date: v.issue_date, dueDate: v.due_date || v.issue_date, num: v.number, partyId, projectId: pid, lines, tax: c(v.tax_cents), taxRateId: +v.tax_cents ? (hst?.id || '') : '',
+      memo: `From LeviLex — matter ${(d.matters || []).find(m => m.id === v.matter_id)?.number || ''}`, void: v.status === 'void', levilexId: v.id, updated: nowISO() });
+    const sig = x => JSON.stringify([x.date, x.dueDate, x.num, x.partyId, x.projectId, x.lines, x.tax, !!x.void]);
+    if (!existing) { db.txns.push(t); log('txn', t.id, 'created (LeviLex sync)', null, t); cnt.inv++; if (t.void) cnt.voided++; }
+    else if (sig(existing) !== sig(t)) { if (t.void && !existing.void) cnt.voided++; Object.assign(existing, t); log('txn', t.id, 'edited (LeviLex sync)', null, t); cnt.invUpd++; }
+    invMap[v.id] = (existing || t);
+  }
+  for (const p of d.payments || []) {
+    if (db.txns.some(t => t.levilexPaymentId === p.id)) continue;
+    const inv = invMap[p.invoice_id] || db.txns.find(t => t.levilexId === p.invoice_id && t.type === 'invoice'); if (!inv) continue;
+    const t = { id: uid(), type: 'payment', date: p.date, partyId: inv.partyId, linkId: inv.id, bankAccountId: L.depositAccountId, amount: c(p.amount_cents), num: p.reference || '', projectId: inv.projectId,
+      memo: `LeviLex payment${p.method ? ' by ' + p.method : ''}${p.from_trust ? ' — transferred from trust' : ''}`, levilexPaymentId: p.id, custom: {}, created: nowISO(), updated: nowISO() };
+    db.txns.push(t); log('txn', t.id, 'created (LeviLex sync)', null, t); cnt.pay++;
+  }
+  save();
+  return [cnt.clients && `${cnt.clients} new clients`, cnt.matters && `${cnt.matters} new matters`, cnt.inv && `${cnt.inv} new invoices`, cnt.invUpd && `${cnt.invUpd} invoices updated`,
+    cnt.voided && `${cnt.voided} voided`, cnt.pay && `${cnt.pay} payments`].filter(Boolean).join(', ') || 'already up to date';
+}
+/* Costs marked "Bill to client in LeviLex" on a matter project → LeviLex disbursements (sent once). */
+async function lxPushCosts() {
+  const todo = [];
+  for (const t of db.txns) { if (!live(t) || !t.billToClient || !['expense', 'bill'].includes(t.type)) continue;
+    (t.lines || []).forEach((l, i) => { const m = proj(l.projectId || t.projectId); if (m?.levilexId && !l.levilexExpenseId && +l.amount) todo.push([t, i, m]); }); }
+  let n = 0;
+  for (const [t, i, m] of todo) {
+    const l = t.lines[i]; const who = partyOf(t)?.name;
+    const r = await lxFetch('/api/expenses', { method: 'POST', body: JSON.stringify({ matter_id: m.levilexId, date: t.date, description: [who, l.desc || acct(l.accountId)?.name].filter(Boolean).join(' — '), amount_cents: Math.round(l.amount * 100), taxable: !!+t.tax }) });
+    l.levilexExpenseId = r.id; n++; save();
+  }
+  return n;
 }
 
 /* ---------- receipts gallery ---------- */
