@@ -155,6 +155,7 @@ const DEBIT_NORMAL = new Set(['Asset', 'Cost of Goods Sold', 'Expense', 'Other E
 const PL_TYPES = new Set(['Income', 'Cost of Goods Sold', 'Expense', 'Other Income', 'Other Expense']);
 const TT = {
   invoice: { label: 'Invoice', party: 'customer', lines: 'item', tax: 'sale', due: true, receipts: true },
+  credit: { label: 'Credit Note', party: 'customer', link: 'invoice', lines: 'amount', tax: 'sale', receipts: true },
   payment: { label: 'Payment Received', party: 'customer', link: 'invoice', bank: 'Deposit to', amount: true, receipts: true },
   deposit: { label: 'Income / Deposit', party: 'customer', partyOptional: true, lines: 'amount', tax: 'sale', bank: 'Deposit to', receipts: true },
   bill: { label: 'Bill', party: 'vendor', lines: 'amount', tax: 'purchase', due: true, receipts: true },
@@ -282,7 +283,7 @@ function fyStart(ds) { const m = +db.meta.fyStartMonth || 1; let y = +ds.slice(0
 const sumLines = t => r2((t.lines || []).reduce((s, l) => s + (+l.amount || 0), 0));
 function txTotal(t) {
   switch (t.type) {
-    case 'invoice': case 'bill': case 'expense': case 'deposit': return r2(sumLines(t) + (+t.tax || 0));
+    case 'invoice': case 'bill': case 'expense': case 'deposit': case 'credit': return r2(sumLines(t) + (+t.tax || 0));
     case 'journal': return r2((t.lines || []).reduce((s, l) => s + (+l.debit || 0), 0));
     default: return r2(+t.amount || 0);
   }
@@ -296,6 +297,7 @@ function postings(t) {
   };
   const L = t.lines || [], tax = r2(+t.tax || 0), total = txTotal(t), amt = r2(+t.amount || 0), taxAcc = db.meta.taxAccountId;
   switch (t.type) {
+    case 'credit': L.forEach(l => add(l.accountId, l.amount, 0, l.desc, l.projectId)); add(taxAcc, tax, 0, 'Sales tax reversed'); add(arId(), 0, total); break; // reduces what the client owes
     case 'invoice': add(arId(), total, 0); L.forEach(l => add(l.accountId, 0, l.amount, l.desc, l.projectId)); add(taxAcc, 0, tax, 'Sales tax collected'); break;
     case 'deposit': add(t.bankAccountId, total, 0); L.forEach(l => add(l.accountId, 0, l.amount, l.desc, l.projectId)); add(taxAcc, 0, tax, 'Sales tax collected'); break;
     case 'bill': L.forEach(l => add(l.accountId, l.amount, 0, l.desc, l.projectId)); add(taxAcc, tax, 0, 'Input tax credit'); add(apId(), 0, total); break;
@@ -326,13 +328,13 @@ function netIncome(from, to, projectId) {
   for (const a of db.accounts) if (PL_TYPES.has(a.type)) { const v = natural(a, b[a.id]); n += DEBIT_NORMAL.has(a.type) ? -v : v; }
   return r2(n);
 }
-function paidAgainst(id, type) { return r2(db.txns.filter(t => live(t) && t.type === type && t.linkId === id).reduce((s, t) => s + (+t.amount || 0), 0)); }
+function paidAgainst(id, type) { return r2(db.txns.filter(t => live(t) && (t.type === type || (type === 'payment' && t.type === 'credit')) && t.linkId === id).reduce((s, t) => s + (t.type === 'credit' ? txTotal(t) : (+t.amount || 0)), 0)); }
 const openBal = t => t.void ? 0 : r2(txTotal(t) - paidAgainst(t.id, t.type === 'invoice' ? 'payment' : 'billpay'));
 function partyBalance(kind, id) {
   let s = 0;
   for (const t of db.txns) {
     if (!live(t) || t.partyId !== id) continue;
-    if (kind === 'customer') { if (t.type === 'invoice') s += txTotal(t); if (t.type === 'payment') s -= +t.amount || 0; }
+    if (kind === 'customer') { if (t.type === 'invoice') s += txTotal(t); if (t.type === 'payment') s -= +t.amount || 0; if (t.type === 'credit') s -= txTotal(t); }
     else { if (t.type === 'bill') s += txTotal(t); if (t.type === 'billpay') s -= +t.amount || 0; }
   }
   return r2(s);
@@ -372,7 +374,7 @@ function newMenu() {
   return `<details class="menu" id="newmenu"><summary class="btn primary">+ New</summary><div class="items">
     <a onclick="snapReceipt()">📷 Snap receipt → expense</a><hr>
     <a onclick="openTx('expense')">Expense</a><a onclick="openTx('bill')">Bill (to pay later)</a><a onclick="openTx('billpay')">Pay a bill</a><hr>
-    <a onclick="openTx('invoice')">Invoice</a><a onclick="openTx('payment')">Receive payment</a><a onclick="openTx('deposit')">Income / Deposit</a><hr>
+    <a onclick="openTx('invoice')">Invoice</a><a onclick="openTx('payment')">Receive payment</a><a onclick="openTx('credit')">Credit note</a><a onclick="openTx('deposit')">Income / Deposit</a><hr>
     <a onclick="openTx('transfer')">Transfer</a><a onclick="openTx('journal')">Journal entry</a><hr>
     <a onclick="openParty('customer')">Client</a><a onclick="openParty('vendor')">Vendor</a><a onclick="openProject()">Project</a><a onclick="openAccount()">Account</a>
   </div></details>`;
@@ -565,7 +567,7 @@ function partyChanged(keepLink) {
   }
   if (cfg.lines && pid && !cur.orig) { const d = defaultLineAcct(cur.type, pid); if (d) $$('#lines tr.line').forEach(tr => { const s = tr.querySelector('[data-f=accountId]'); if (s && !tr.querySelector('[data-f=amount]')?.value) s.value = d; }); }
 }
-function linkChanged() { const f = $('#txform'); const d = db.txns.find(t => t.id === f.elements.linkId.value); if (d && !(+f.elements.amount.value)) f.elements.amount.value = openBal(d); }
+function linkChanged() { const f = $('#txform'); const d = db.txns.find(t => t.id === f.elements.linkId.value); if (d && f.elements.amount && !(+f.elements.amount.value)) f.elements.amount.value = openBal(d); }
 function readLines() {
   return $$('#lines tr.line').map(tr => { const o = {}; tr.querySelectorAll('[data-f]').forEach(i => o[i.dataset.f] = i.type === 'number' ? (i.value === '' ? '' : +i.value) : i.value); return o; })
     .filter(l => l.accountId || +l.amount || +l.debit || +l.credit || l.desc)
@@ -1330,7 +1332,7 @@ function buildReport(R) {
     case 'ar': case 'ap': {
       const type = R.id === 'ar' ? 'invoice' : 'bill'; const kind = R.id === 'ar' ? 'customer' : 'vendor'; const rows = []; const T = [0, 0, 0, 0, 0, 0];
       const docs = db.txns.filter(t => t.type === type && live(t) && t.date <= R.to).map(t => {
-        const paid = db.txns.filter(p => live(p) && p.linkId === t.id && p.date <= R.to).reduce((s, p) => s + (+p.amount || 0), 0); return [t, r2(txTotal(t) - paid)]; }).filter(x => x[1] > 0.004);
+        const paid = db.txns.filter(p => live(p) && p.linkId === t.id && p.date <= R.to).reduce((s, p) => s + (p.type === 'credit' ? txTotal(p) : (+p.amount || 0)), 0); return [t, r2(txTotal(t) - paid)]; }).filter(x => x[1] > 0.004);
       docs.sort((a, b) => (party(kind, a[0].partyId)?.name || '').localeCompare(party(kind, b[0].partyId)?.name || '') || a[0].date.localeCompare(b[0].date));
       for (const [t, o] of docs) { const late = daysBetween(t.dueDate || t.date, R.to); const k = late <= 0 ? 0 : late <= 30 ? 1 : late <= 60 ? 2 : late <= 90 ? 3 : 4; const c = ['', '', '', '', '']; c[k] = o; T[k] += o; T[5] += o;
         rows.push({ c: [party(kind, t.partyId)?.name || '', t.num || '', t.date, t.dueDate || '', ...c, o], txn: t.id }); }
@@ -1338,8 +1340,8 @@ function buildReport(R) {
       return { title: REPORTS[R.id], sub: 'As of ' + R.to, cols: [{ h: 'Name' }, { h: 'No.' }, { h: 'Date' }, { h: 'Due' }, { h: 'Current', num: 1 }, { h: '1–30', num: 1 }, { h: '31–60', num: 1 }, { h: '61–90', num: 1 }, { h: '90+', num: 1 }, { h: 'Open', num: 1 }], rows };
     }
     case 'bycust': case 'byvend': {
-      const kind = R.id === 'bycust' ? 'customer' : 'vendor'; const types = kind === 'customer' ? ['invoice', 'deposit'] : ['bill', 'expense']; const m = {};
-      db.txns.filter(t => live(t) && types.includes(t.type) && inRange(t, R.from, R.to)).forEach(t => { const k = t.partyId || ''; m[k] = m[k] || [0, 0, 0]; m[k][0] += sumLines(t); m[k][1] += +t.tax || 0; m[k][2]++; });
+      const kind = R.id === 'bycust' ? 'customer' : 'vendor'; const types = kind === 'customer' ? ['invoice', 'deposit', 'credit'] : ['bill', 'expense']; const m = {};
+      db.txns.filter(t => live(t) && types.includes(t.type) && inRange(t, R.from, R.to)).forEach(t => { const k = t.partyId || ''; m[k] = m[k] || [0, 0, 0]; const sg = t.type === 'credit' ? -1 : 1; m[k][0] += sg * sumLines(t); m[k][1] += sg * (+t.tax || 0); m[k][2]++; });
       const rows = Object.entries(m).sort((a, b) => b[1][0] - a[1][0]).map(([k, v]) => ({ c: [party(kind, k)?.name || '(no name)', v[2] + '', v[0], v[1], v[0] + v[1]] }));
       const tot = Object.values(m).reduce((s, v) => [s[0] + v[0], s[1] + v[1]], [0, 0]); rows.push({ c: ['TOTAL', '', tot[0], tot[1], tot[0] + tot[1]], cls: 'grand' });
       return { title: REPORTS[R.id], sub: per, cols: [{ h: kind === 'customer' ? 'Client' : 'Vendor' }, { h: '#', num: 1 }, { h: 'Before tax', num: 1 }, { h: 'Tax', num: 1 }, { h: 'Total', num: 1 }], rows };
@@ -1377,6 +1379,7 @@ function gstData(T) {
   let sales = 0, collected = 0, itc = 0, adjust = 0; const TA = db.meta.taxAccountId;
   for (const t of db.txns) { if (!live(t) || !inRange(t, T.from, T.to)) continue;
     if (t.type === 'invoice' || t.type === 'deposit') { sales += sumLines(t); collected += +t.tax || 0; }
+    else if (t.type === 'credit') { sales -= sumLines(t); collected -= +t.tax || 0; }
     else if (t.type === 'bill' || t.type === 'expense') itc += +t.tax || 0;
     else if (t.type === 'journal') for (const l of t.lines) if (l.accountId === TA) adjust += (+l.credit || 0) - (+l.debit || 0); }
   return { sales: r2(sales), collected: r2(collected), itc: r2(itc), adjust: r2(adjust) };
@@ -1833,7 +1836,7 @@ async function lxSync() {
 /* Apply a LeviLex export (from the live sync or an uploaded file). Safe to run repeatedly. */
 function applyLevilex(d) {
   if (!d || d.format !== 'levilex-ownbooks') throw new Error('This is not a LeviLex export file.');
-  if (+d.version > 1) throw new Error('This LeviLex export is newer than this OwnBooks understands. Update OwnBooks.');
+  if (+d.version > 2) throw new Error('This LeviLex export is newer than this OwnBooks understands. Update OwnBooks.');
   const L = lxAccounts(); const c = n => r2((+n || 0) / 100); const cnt = { clients: 0, matters: 0, inv: 0, invUpd: 0, pay: 0, voided: 0 };
   const hst = db.meta.taxRates.find(r => +r.rate === 13);
   const cust = {}, proj_ = {}, invMap = {};
@@ -1867,6 +1870,17 @@ function applyLevilex(d) {
     else if (sig(existing) !== sig(t)) { if (t.void && !existing.void) cnt.voided++; Object.assign(existing, t); log('txn', t.id, 'edited (LeviLex sync)', null, t); cnt.invUpd++; }
     invMap[v.id] = (existing || t);
   }
+  for (const n of d.credit_notes || []) { // version 2: credit notes reduce what the client owes, the income and the HST
+    const inv = invMap[n.invoice_id] || db.txns.find(t => t.levilexId === n.invoice_id && t.type === 'invoice');
+    const pid = proj_[n.matter_id] || inv?.projectId || '';
+    const lines = [c(n.fees_cents) && { accountId: L.feesAccountId, desc: 'Fees credited', amount: c(n.fees_cents), projectId: pid },
+      c(n.disbursements_cents) && { accountId: L.disbAccountId, desc: 'Disbursements credited', amount: c(n.disbursements_cents), projectId: pid }].filter(Boolean);
+    const existing = db.txns.find(t => t.levilexCreditId === n.id);
+    const t = Object.assign(existing ? clone(existing) : { id: uid(), type: 'credit', created: nowISO(), custom: {} }, { date: n.date, num: n.number, partyId: inv?.partyId || cust[(d.matters || []).find(m => m.id === n.matter_id)?.client_id] || '',
+      linkId: inv?.id || '', projectId: pid, lines, tax: c(n.tax_cents), taxRateId: +n.tax_cents ? (hst?.id || '') : '', memo: 'LeviLex credit note' + (n.reason ? ' — ' + n.reason : ''), levilexCreditId: n.id, updated: nowISO() });
+    if (!existing) { db.txns.push(t); log('txn', t.id, 'created (LeviLex sync)', null, t); cnt.cn = (cnt.cn || 0) + 1; }
+    else if (JSON.stringify([existing.date, existing.lines, existing.tax, existing.linkId]) !== JSON.stringify([t.date, t.lines, t.tax, t.linkId])) { Object.assign(existing, t); log('txn', t.id, 'edited (LeviLex sync)', null, t); cnt.cn = (cnt.cn || 0) + 1; }
+  }
   for (const p of d.payments || []) {
     if (db.txns.some(t => t.levilexPaymentId === p.id)) continue;
     const inv = invMap[p.invoice_id] || db.txns.find(t => t.levilexId === p.invoice_id && t.type === 'invoice'); if (!inv) continue;
@@ -1876,7 +1890,7 @@ function applyLevilex(d) {
   }
   save();
   return [cnt.clients && `${cnt.clients} new clients`, cnt.matters && `${cnt.matters} new matters`, cnt.inv && `${cnt.inv} new invoices`, cnt.invUpd && `${cnt.invUpd} invoices updated`,
-    cnt.voided && `${cnt.voided} voided`, cnt.pay && `${cnt.pay} payments`].filter(Boolean).join(', ') || 'already up to date';
+    cnt.voided && `${cnt.voided} voided`, cnt.pay && `${cnt.pay} payments`, cnt.cn && `${cnt.cn} credit notes`].filter(Boolean).join(', ') || 'already up to date';
 }
 /* Costs marked "Bill to client in LeviLex" on a matter project → LeviLex disbursements (sent once). */
 async function lxPushCosts() {

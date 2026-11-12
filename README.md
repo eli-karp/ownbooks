@@ -26,7 +26,8 @@ Import Data → **LeviLex** → enter the LeviLex address and API token (`[integ
 - Payments, including transfers from trust → payments applied to the invoice, deposited to the account you choose.
 - Expenses/bills ticked **Bill to client in LeviLex** with lines tagged to a matter → sent to LeviLex once as disbursements.
 - No connection? LeviLex's **Export for OwnBooks** file can be dropped on the Import Data page instead. Syncing again never duplicates.
-Needs LeviLex's `GET /api/ownbooks/export` endpoint (being added in the LeviLex repository).
+- Credit notes issued in LeviLex reduce the client balance, income and HST here (export version 2).
+Needs LeviLex with `GET /api/ownbooks/export` (levilex main 2fdc025 or later; credit notes from 8e1aafb).
 
 ## Moving from QuickBooks Online (Import Data page)
 1. In QuickBooks Online: **⚙ Settings → Export data** → Reports + Lists, All dates → Export to Excel (one .zip).
